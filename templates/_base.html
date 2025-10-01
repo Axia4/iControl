@@ -9,10 +9,15 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <style>
         @media print {
-            body {
+            body, html, .container {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
                 background-color: white !important;
+            }
+            :root {
+                color-scheme: light;
+                --bs-body-bg: white;
+                --bs-body-color: black;
             }
         }
     </style>
