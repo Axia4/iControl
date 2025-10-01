@@ -1,0 +1,55 @@
+{% extends "_base.html" %}
+
+{% block title %}Resumen Diario - Cordiax{% endblock %}
+
+{% block content %}
+<!-- A paperlike container, with a header containing a Logo on the right top -->
+<div data-bs-theme="light" class="bg-light text-dark p-4 rounded"
+    style="border-top: 10px solid #007bff; border-top-left-radius: 0; border-top-right-radius: 0;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Resumen Diario</h1>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="img-fluid" style="max-height: 50px;">
+    </div>
+    <p>Este es el resumen diario de las actividades y eventos relevantes.</p>
+    <!-- A bootstrap card grid, min 25rem -->
+    <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(25rem, 1fr)); display: grid;">
+        <div class="card text-dark" style="display: inline-block;">
+            <div class="card-header text-white" style="background-color: #7b00ff;"> <!-- Comedor color -->
+                <span class="card-title fw-bold">Menú del Comedor</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">La base de datos no contiene información sobre el menú del comedor.</p>
+                <a href="/menu_comedor" class="btn btn-primary d-print-none">Acceder</a>
+            </div>
+        </div>
+        <div class="card text-dark" style="display: inline-block;">
+            <div class="card-header text-white" style="background-color: #ff00bb;"> <!-- Recordatorios color -->
+                <span class="card-title fw-bold">Recordatorios</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">La base de datos no contiene información sobre los recordatorios.</p>
+                <a href="/recordatorios" class="btn btn-primary d-print-none">Acceder</a>
+            </div>
+        </div>
+        <div class="card text-dark" style="display: inline-block;">
+            <div class="card-header text-white" style="background-color: #ff1100;"> <!-- Inventario color -->
+                <span class="card-title fw-bold">Cambios en el inventario</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">La base de datos no contiene información sobre los cambios en el inventario.</p>
+                <a href="/inventario" class="btn btn-primary d-print-none">Acceder</a>
+            </div>
+        </div>
+        <div class="card text-dark" style="display: inline-block;">
+            <div class="card-header text-dark" style="background-color: #ffe600;"> <!-- Inventario color -->
+                <span class="card-title fw-bold">Turnos de tarde</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">La base de datos no contiene información sobre los turnos de tarde.</p>
+                <a href="/inventario" class="btn btn-primary d-print-none">Acceder</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
