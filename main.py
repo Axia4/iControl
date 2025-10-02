@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template
 
 app = Flask(__name__)
@@ -20,4 +21,8 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    if os.environ.get('FLASK_ENV') == 'development':
+        app.config['TEMPLATES_AUTO_RELOAD'] = True
+        app.run(port=5000, debug=True)
+    else:
+        app.run(host='0.0.0.0', port=5343, debug=False)
