@@ -5,8 +5,10 @@ import requests
 import json
 from datetime import datetime, timedelta
 from icalendar import Calendar
-from shared.notify import notify
-from pysondb import PysonDB
+
+from iaxshared.notify import notify
+from iaxshared.iax_db import SimpleJSONDB
+
 # Handle PyInstaller frozen executable paths
 if getattr(sys, 'frozen', False):
     # Running as compiled executable
@@ -18,7 +20,10 @@ else:
     template_folder = 'templates'
     static_folder = 'static'
 
-DB_DEVICES = PysonDB('iControl-Datos/devices.json')
+# Initialize the new database
+DB = SimpleJSONDB('_datos/iControl.iax')
+DB.create_table('devices')
+
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
 
@@ -28,9 +33,7 @@ def index():
 
 @app.route('/notify', methods=['GET', 'POST'])
 def notify_route():
-    devices = DB_DEVICES.get_all().items()
-    if not devices:
-        devices = {}
+    devices = DB.get_all('devices')
     if request.method == 'POST':
         targets = request.form.getlist('targets')
         message = request.form.get('message')
@@ -39,15 +42,15 @@ def notify_route():
         priority = request.form.get('priority', "0")
         if not message:
             flash("El mensaje no puede estar vacío.")
-            return render_template('notify.html', devices=devices)
+            return render_template('notify.html', devices=devices.items())
         if not targets:
             flash("Debe seleccionar al menos un dispositivo.")
-            return render_template('notify.html', devices=devices)
+            return render_template('notify.html', devices=devices.items())
         for target in targets:
             notify(target, message, button_title, button_url, priority)
         flash("Notificaciones enviadas a {} dispositivos.".format(len(targets)))
         return redirect(url_for('index'))
-    return render_template('notify.html', devices=devices)
+    return render_template('notify.html', devices=devices.items())
 
 @app.route('/resumen_diario')
 def resumen_diario():
@@ -118,8 +121,8 @@ def sysinfo():
 #region Admin -> Devices
 @app.route('/admin/devices')
 def admin_devices():
-    devices = DB_DEVICES.get_all().items()
-    return render_template('admin/devices/index.html', devices=devices)
+    devices = DB.get_all('devices')
+    return render_template('admin/devices/index.html', devices=devices.items())
 
 @app.route('/admin/devices/add', methods=['GET', 'POST'])
 def admin_devices_add():
@@ -131,25 +134,25 @@ def admin_devices_add():
             flash("El nombre y el topic son obligatorios.")
             return render_template('admin/devices/add.html')
         # Verificar si el topic ya existe
-        existing = DB_DEVICES.get_by_query(query=lambda d: d['ntfy_topic'] == ntfy_topic)
+        existing = DB.find('devices', {'ntfy_topic': ntfy_topic})
         if existing:
             flash("Ya existe un dispositivo con ese topic.\nEs mejor usar uno por dispositivo para poder diferenciar los avisos.\nSe creará de todas formas.")
-        DB_DEVICES.add({'name': name, 'ntfy_topic': ntfy_topic, 'description': description})
+        DB.insert('devices', {'name': name, 'ntfy_topic': ntfy_topic, 'description': description})
         return redirect('/admin/devices')
     return render_template('admin/devices/add.html')
 
-@app.route('/admin/devices/delete/<int:device_id>', methods=['POST'])
+@app.route('/admin/devices/delete/<device_id>', methods=['POST'])
 def admin_devices_delete(device_id):
-    device = DB_DEVICES.get_by_id(device_id)
+    device = DB.find_by_id('devices', device_id)
     if not device:
         flash("Dispositivo no encontrado.")
         return redirect('/admin/devices')
-    DB_DEVICES.delete_by_id(device_id)
+    DB.delete_by_id('devices', device_id)
     return redirect('/admin/devices')
 
 @app.route('/admin/devices/<device_id>/edit', methods=['GET', 'POST'])
 def admin_devices_edit(device_id):
-    device = DB_DEVICES.get_by_id(device_id)
+    device = DB.find_by_id('devices', device_id)
     if not device:
         flash("Dispositivo no encontrado.")
         return redirect('/admin/devices')
@@ -161,12 +164,20 @@ def admin_devices_edit(device_id):
             flash("El nombre y el topic son obligatorios.")
             return render_template('admin/devices/edit.html', device=device, id=device_id)
         # Verificar si el topic ya existe en otro dispositivo
-        existing = DB_DEVICES.get_by_query(query=lambda d: d['ntfy_topic'] == ntfy_topic)
-        if len(existing.keys()) > 1 or (len(existing.keys()) == 1 and list(existing.keys())[0] != device_id):
+        existing = DB.find('devices', {'ntfy_topic': ntfy_topic})
+        if len(existing) > 1 or (len(existing) == 1 and existing[0]['id'] != device_id):
             flash("Ya existe un dispositivo con ese topic.\nEs mejor usar uno por dispositivo para poder diferenciar los avisos.\nSe actualizará de todas formas.")
-        DB_DEVICES.update_by_id(device_id, {'name': name, 'ntfy_topic': ntfy_topic, 'description': description})
+        DB.update_by_id('devices', device_id, {'name': name, 'ntfy_topic': ntfy_topic, 'description': description})
         return redirect('/admin/devices')
     return render_template('admin/devices/edit.html', device=device, id=device_id)
+
+@app.route('/admin/devices/<device_id>')
+def admin_devices_view(device_id):
+    device = DB.find_by_id('devices', device_id)
+    if not device:
+        flash("Dispositivo no encontrado.")
+        return redirect('/admin/devices')
+    return render_template('admin/devices/view.html', device=device, id=device_id)
 
 #endregion
 

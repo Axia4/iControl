@@ -1,9 +1,10 @@
 Flask
 Flask-Cors
-pysondb-v2
+flask-socketio
 requests
 icalendar
 pywebview
 pillow
 pystray
 playsound==1.2.2
+python-socketio

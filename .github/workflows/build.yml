@@ -27,7 +27,7 @@ jobs:
       - name: Build Apps with PyInstaller
         run: |
           pyinstaller --onefile --icon=iControl/logo.ico --add-data "iControl/static;static" --add-data "iControl/templates;templates" -n iControl iControl/main.py
-          pyinstaller --onefile --icon=iAvisos/logo.ico --add-data "iAvisos/static;static" -n iAvisos iAvisos/main.py
+          pyinstaller --windowed --onefile --icon=iAvisos/logo.ico --add-data "iAvisos/static;static" -n iAvisos iAvisos/main.py
 
 
       - name: Create GitHub Release with EXE
