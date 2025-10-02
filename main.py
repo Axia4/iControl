@@ -41,15 +41,16 @@ def resumen_diario():
                 hoy = datetime.now().date()
                 for component in cal.walk():
                     if component.name == "VEVENT":
-                        inicio = component.get('dtstart').dt
-                        # Asegurarse de obtener la fecha correctamente
-                        if isinstance(inicio, datetime):
-                            inicio_fecha = inicio.date()
-                        else:
-                            inicio_fecha = inicio
-                        if inicio_fecha == hoy:
+                        dtstart = component.get('dtstart').dt
+                        dtend = component.get('dtend').dt if component.get('dtend') else dtstart
+                        # Convertir a date si es datetime
+                        if isinstance(dtstart, datetime):
+                            dtstart = dtstart.date()
+                        if isinstance(dtend, datetime):
+                            dtend = dtend.date()
+                        # Mostrar si hoy está en el rango [dtstart, dtend)
+                        if dtstart <= hoy < dtend:
                             resumen = str(component.get('summary'))
-                            # Si es evento de todo el día, no hay hora
                             if isinstance(component.get('dtstart').dt, datetime):
                                 hora = component.get('dtstart').dt.strftime('%H:%M')
                             else:
@@ -67,12 +68,13 @@ def resumen_diario():
                 hoy = datetime.now().date()
                 for component in cal.walk():
                     if component.name == "VEVENT":
-                        inicio = component.get('dtstart').dt
-                        if isinstance(inicio, datetime):
-                            inicio_fecha = inicio.date()
-                        else:
-                            inicio_fecha = inicio
-                        if inicio_fecha == hoy:
+                        dtstart = component.get('dtstart').dt
+                        dtend = component.get('dtend').dt if component.get('dtend') else dtstart
+                        if isinstance(dtstart, datetime):
+                            dtstart = dtstart.date()
+                        if isinstance(dtend, datetime):
+                            dtend = dtend.date()
+                        if dtstart <= hoy < dtend:
                             resumen = str(component.get('summary'))
                             if isinstance(component.get('dtstart').dt, datetime):
                                 hora = component.get('dtstart').dt.strftime('%H:%M')
