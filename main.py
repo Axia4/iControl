@@ -42,11 +42,18 @@ def resumen_diario():
                 for component in cal.walk():
                     if component.name == "VEVENT":
                         inicio = component.get('dtstart').dt
+                        # Asegurarse de obtener la fecha correctamente
                         if isinstance(inicio, datetime):
-                            inicio = inicio.date()
-                        if inicio == hoy:
+                            inicio_fecha = inicio.date()
+                        else:
+                            inicio_fecha = inicio
+                        if inicio_fecha == hoy:
                             resumen = str(component.get('summary'))
-                            hora = component.get('dtstart').dt.strftime('%H:%M') if hasattr(component.get('dtstart').dt, 'strftime') else ''
+                            # Si es evento de todo el día, no hay hora
+                            if isinstance(component.get('dtstart').dt, datetime):
+                                hora = component.get('dtstart').dt.strftime('%H:%M')
+                            else:
+                                hora = 'Todo el día'
                             eventos_tarde.append({'hora': hora, 'resumen': resumen})
         except Exception as e:
             eventos_tarde = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
@@ -62,10 +69,15 @@ def resumen_diario():
                     if component.name == "VEVENT":
                         inicio = component.get('dtstart').dt
                         if isinstance(inicio, datetime):
-                            inicio = inicio.date()
-                        if inicio == hoy:
+                            inicio_fecha = inicio.date()
+                        else:
+                            inicio_fecha = inicio
+                        if inicio_fecha == hoy:
                             resumen = str(component.get('summary'))
-                            hora = component.get('dtstart').dt.strftime('%H:%M') if hasattr(component.get('dtstart').dt, 'strftime') else ''
+                            if isinstance(component.get('dtstart').dt, datetime):
+                                hora = component.get('dtstart').dt.strftime('%H:%M')
+                            else:
+                                hora = 'Todo el día'
                             eventos_recordatorios.append({'hora': hora, 'resumen': resumen})
         except Exception as e:
             eventos_recordatorios = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
