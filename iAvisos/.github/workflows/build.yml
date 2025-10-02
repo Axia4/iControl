@@ -24,18 +24,18 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build Apps with PyInstaller
+      - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --icon=iControl/logo.ico --add-data "iControl/static;static" --add-data "iControl/templates;templates" -n iControl iControl/main.py
-          pyinstaller --onefile --icon=iAvisos/logo.ico --add-data "iAvisos/static;static" -n iAvisos iAvisos/main.py
+          pyinstaller --onefile --icon=logo.ico --add-data "logo.ico;." --add-data "alarm.wav;." --add-data "ring.wav;." -n iAvisos_debug main.py
+          pyinstaller --onefile --windowed --icon=logo.ico --add-data "logo.ico;." --add-data "alarm.wav;." --add-data "ring.wav;." -n iAvisos main.py
 
 
       - name: Create GitHub Release with EXE
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "dist/*.exe"
+          artifacts: "dist/iAvisos.exe,dist/iAvisos_debug.exe"
           tag: ${{ github.ref_name }}
-          name: ${{ github.ref_name }} - intraAxia4
+          name: ${{ github.ref_name }} - iax Avisos
           prerelease: false
           allowUpdates: true
           omitBodyDuringUpdate: true

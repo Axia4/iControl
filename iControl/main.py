@@ -5,7 +5,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 from icalendar import Calendar
-from utils.notify import notify
+from shared.notify import notify
 from pysondb import PysonDB
 # Handle PyInstaller frozen executable paths
 if getattr(sys, 'frozen', False):

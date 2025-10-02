@@ -4,3 +4,6 @@ pysondb-v2
 requests
 icalendar
 pywebview
+pillow
+pystray
+playsound==1.2.2
