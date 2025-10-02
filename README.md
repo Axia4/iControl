@@ -1,7 +1,17 @@
 # interAxia4
+**Disponible:**
 
-<img height="64" src="iControl/static/logo.png" alt="Logo iControl">
-<img height="64" src="iAvisos/static/logo.png" alt="Logo iAvisos">
+<img height="64" src="_logos/Avisos.png" alt="Logo iAvisos"> < Avisos
+
+**Beta:**
+
+<img height="64" src="_logos/Control.png" alt="Logo iControl"> < Control
+
+**Alpha:**
+
+<img height="64" src="_logos/Hablar.png" alt="Logo iHablar"> < Hablar (email)
+
+---
 
 **interAxia4** es una plataforma web integral de coordinación del aula que permite la gestión de dispositivos, notificaciones y actividades diarias en entornos educativos.
 
