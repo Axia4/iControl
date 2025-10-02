@@ -10,6 +10,11 @@ def home():
 def resumen_diario():
     return render_template('resumen_diario.html')
 
+@app.route('/sysinfo')
+def sysinfo():
+    return render_template('sysinfo.html')
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404

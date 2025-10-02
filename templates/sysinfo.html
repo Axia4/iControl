@@ -1,0 +1,18 @@
+{% extends "_base.html" %}
+
+{% block title %}información del sistema - Cordiax{% endblock %}
+
+{% block content %}
+<div style="text-align: center; font-style: italic;" class="text-muted">Psst... Puedes acceder a esta pagina tocando 4 veces el logo.</div>
+<!-- A paperlike container, with a header containing a Logo on the right top -->
+<div data-bs-theme="light" class="bg-light text-dark p-4 rounded"
+    style="border-top: 10px solid #007bff; border-top-left-radius: 0; border-top-right-radius: 0;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">información del sistema</h1>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="img-fluid" style="max-height: 50px;">
+    </div>
+    <p>Por el momento no hay información disponible.</p>
+
+</div>
+<button onclick="window.print()" class="btn btn-light text-dark mt-4 d-print-none"><i class="fas fa-print"></i> Imprimir</button>
+{% endblock %}
