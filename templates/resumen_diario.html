@@ -45,8 +45,17 @@
                 <span class="card-title fw-bold">Turnos de tarde</span>
             </div>
             <div class="card-body">
-                <p class="card-text">La base de datos no contiene información sobre los turnos de tarde.</p>
-                <a href="/inventario" class="btn btn-primary d-print-none">Acceder</a>
+                {% if eventos and eventos|length > 0 %}
+                <ul class="list-group mb-2">
+                    {% for evento in eventos %}
+                    <li class="list-group-item">
+                        <strong>{{ evento.hora }}</strong> - {{ evento.resumen }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="card-text">No hay eventos para hoy.</p>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -1,6 +1,10 @@
 import os
 import sys
 from flask import Flask, render_template
+import requests
+import json
+from datetime import datetime, timedelta
+from icalendar import Calendar
 
 # Handle PyInstaller frozen executable paths
 if getattr(sys, 'frozen', False):
@@ -21,7 +25,32 @@ def home():
 
 @app.route('/resumen_diario')
 def resumen_diario():
-    return render_template('resumen_diario.html')
+    # Obtener ruta de config.json relativa al ejecutable
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    cal_url = config.get('Cal_TurnosDeTarde')
+    eventos = []
+    if cal_url:
+        try:
+            resp = requests.get(cal_url)
+            if resp.status_code == 200:
+                cal = Calendar.from_ical(resp.content)
+                hoy = datetime.now().date()
+                for component in cal.walk():
+                    if component.name == "VEVENT":
+                        inicio = component.get('dtstart').dt
+                        if isinstance(inicio, datetime):
+                            inicio = inicio.date()
+                        if inicio == hoy:
+                            resumen = str(component.get('summary'))
+                            hora = component.get('dtstart').dt.strftime('%H:%M') if hasattr(component.get('dtstart').dt, 'strftime') else ''
+                            eventos.append({'hora': hora, 'resumen': resumen})
+        except Exception as e:
+            eventos = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
+    return render_template('resumen_diario.html', eventos=eventos)
 
 @app.route('/sysinfo')
 def sysinfo():
