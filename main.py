@@ -31,11 +31,11 @@ def resumen_diario():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    cal_url = config.get('Cal_TurnosDeTarde')
-    eventos = []
-    if cal_url:
+    cal_url_tarde = config.get('Cal_TurnosDeTarde')
+    eventos_tarde = []
+    if cal_url_tarde:
         try:
-            resp = requests.get(cal_url)
+            resp = requests.get(cal_url_tarde)
             if resp.status_code == 200:
                 cal = Calendar.from_ical(resp.content)
                 hoy = datetime.now().date()
@@ -47,10 +47,29 @@ def resumen_diario():
                         if inicio == hoy:
                             resumen = str(component.get('summary'))
                             hora = component.get('dtstart').dt.strftime('%H:%M') if hasattr(component.get('dtstart').dt, 'strftime') else ''
-                            eventos.append({'hora': hora, 'resumen': resumen})
+                            eventos_tarde.append({'hora': hora, 'resumen': resumen})
         except Exception as e:
-            eventos = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
-    return render_template('resumen_diario.html', eventos=eventos)
+            eventos_tarde = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
+    cal_url_recordatorios = config.get('Cal_Recordatorios')
+    eventos_recordatorios = []
+    if cal_url_recordatorios:
+        try:
+            resp = requests.get(cal_url_recordatorios)
+            if resp.status_code == 200:
+                cal = Calendar.from_ical(resp.content)
+                hoy = datetime.now().date()
+                for component in cal.walk():
+                    if component.name == "VEVENT":
+                        inicio = component.get('dtstart').dt
+                        if isinstance(inicio, datetime):
+                            inicio = inicio.date()
+                        if inicio == hoy:
+                            resumen = str(component.get('summary'))
+                            hora = component.get('dtstart').dt.strftime('%H:%M') if hasattr(component.get('dtstart').dt, 'strftime') else ''
+                            eventos_recordatorios.append({'hora': hora, 'resumen': resumen})
+        except Exception as e:
+            eventos_recordatorios = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
+    return render_template('resumen_diario.html', eventos_tarde=eventos_tarde, eventos_recordatorios=eventos_recordatorios)
 
 @app.route('/sysinfo')
 def sysinfo():

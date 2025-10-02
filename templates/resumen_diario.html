@@ -27,8 +27,17 @@
                 <span class="card-title fw-bold">Recordatorios</span>
             </div>
             <div class="card-body">
-                <p class="card-text">La base de datos no contiene información sobre los recordatorios.</p>
-                <a href="/recordatorios" class="btn btn-primary d-print-none">Acceder</a>
+                {% if eventos_tarde and eventos_recordatorios|length > 0 %}
+                <ul class="list-group mb-2">
+                    {% for evento in eventos_recordatorios %}
+                    <li class="list-group-item">
+                        <strong>{{ evento.hora }}</strong> - {{ evento.resumen }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="card-text">No hay eventos para hoy.</p>
+                {% endif %}
             </div>
         </div>
         <div class="card text-dark" style="display: inline-block;">
@@ -45,9 +54,9 @@
                 <span class="card-title fw-bold">Turnos de tarde</span>
             </div>
             <div class="card-body">
-                {% if eventos and eventos|length > 0 %}
+                {% if eventos_tarde and eventos_tarde|length > 0 %}
                 <ul class="list-group mb-2">
-                    {% for evento in eventos %}
+                    {% for evento in eventos_tarde %}
                     <li class="list-group-item">
                         <strong>{{ evento.hora }}</strong> - {{ evento.resumen }}
                     </li>
