@@ -1,7 +1,19 @@
 import os
+import sys
 from flask import Flask, render_template
 
-app = Flask(__name__)
+# Handle PyInstaller frozen executable paths
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    base_path = sys._MEIPASS
+    template_folder = os.path.join(base_path, 'templates')
+    static_folder = os.path.join(base_path, 'static')
+else:
+    # Running as normal Python script
+    template_folder = 'templates'
+    static_folder = 'static'
+
+app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
 @app.route('/')
 def home():
