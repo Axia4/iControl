@@ -1,0 +1,26 @@
+{% extends "_base.html" %}
+
+{% block title %}Nuevo dispositivo - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Nuevo dispositivo</h1>
+    <p class="lead">Registrar un nuevo dispositivo:</p>
+    <hr class="my-4">
+    <form method="POST" action="/admin/devices/add">
+        <div class="mb-3">
+            <label for="name" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <div class="mb-3">
+            <label for="ntfy_topic" class="form-label">Topico NTFY</label>
+            <input type="text" class="form-control" id="ntfy_topic" name="ntfy_topic" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+</div>
+{% endblock %}

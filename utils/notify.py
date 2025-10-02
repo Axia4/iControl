@@ -6,7 +6,7 @@ def notify(target, message, button_title, button_url, priority=3):
         headers = {
             'Title': button_title,
             'Click': button_url,
-            'Priority': priority,  # Priority from -2 (lowest) to 4 (highest)
+            'Priority': priority,  # Priority from -2 (lowest) to 5 (highest)
         }
         response = requests.post(url, data=message.encode('utf-8'), headers=headers)
         response.raise_for_status()

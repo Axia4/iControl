@@ -1,5 +1,5 @@
 Flask
 Flask-Cors
-pysondb
+pysondb-v2
 requests
 icalendar

@@ -1,0 +1,16 @@
+{% extends "_base.html" %}
+
+{% block title %}Ver dispositivo - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Ver dispositivo</h1>
+    <p class="lead">Detalles del dispositivo:</p>
+    <hr class="my-4">
+    <ul class="list-group">
+        <li class="list-group-item"><strong>Nombre:</strong> {{ device.name }}</li>
+        <li class="list-group-item"><strong>Topico NTFY:</strong> {{ device.ntfy_topic }}</li>
+        <li class="list-group-item"><strong>Descripción:</strong> {{ device.description }}</li>
+    </ul>
+</div>
+{% endblock %}

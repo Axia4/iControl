@@ -52,11 +52,31 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="/menu_comedor">Menú del comedor</a>
                     </li>
+                    <li class="nav-dropdown">
+                        <a class="nav-link active dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Administración</a>
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdown" id="adminDropdown">
+                            <a class="dropdown-item" href="/admin/devices">Dispositivos</a>
+                            <a class="dropdown-item" href="/admin/users">Usuarios</a>
+                            <a class="dropdown-item" href="/admin/settings">Ajustes</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="/notify">Enviar aviso</a>
+                        </div>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
     <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         {% block content %}{% endblock %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

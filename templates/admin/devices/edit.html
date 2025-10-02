@@ -1,0 +1,26 @@
+{% extends "_base.html" %}
+
+{% block title %}Editar dispositivo - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Editar dispositivo</h1>
+    <p class="lead">Modificar los detalles del dispositivo:</p>
+    <hr class="my-4">
+    <form method="POST" action="/admin/devices/{{ id }}/edit">
+        <div class="mb-3">
+            <label for="name" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ device.name }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="ntfy_topic" class="form-label">Topico NTFY</label>
+            <input type="text" class="form-control" id="ntfy_topic" name="ntfy_topic" value="{{ device.ntfy_topic }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required>{{ device.description }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    </form>
+</div>
+{% endblock %}
