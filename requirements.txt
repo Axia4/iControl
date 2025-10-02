@@ -3,3 +3,4 @@ Flask-Cors
 pysondb-v2
 requests
 icalendar
+pywebview
