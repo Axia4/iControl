@@ -26,7 +26,7 @@ def home():
 @app.route('/resumen_diario')
 def resumen_diario():
     # Obtener ruta de config.json relativa al ejecutable
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+    config_path = 'config.json'
 
     with open(config_path, 'r') as f:
         config = json.load(f)
