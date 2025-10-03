@@ -5,6 +5,10 @@ import requests
 import json
 from datetime import datetime, timedelta
 from icalendar import Calendar
+import csv
+import io
+import threading
+import time
 
 from iaxshared.notify import notify
 from iaxshared.iax_db import SimpleJSONDB
@@ -23,6 +27,7 @@ else:
 # Initialize the new database
 DB = SimpleJSONDB('_datos/iControl.iax')
 DB.create_table('devices')
+DB.create_table('menus')
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
@@ -112,11 +117,112 @@ def resumen_diario():
                             eventos_recordatorios.append({'hora': hora, 'resumen': resumen})
         except Exception as e:
             eventos_recordatorios = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
-    return render_template('resumen_diario.html', eventos_tarde=eventos_tarde, eventos_recordatorios=eventos_recordatorios)
+    
+    # Get today's menus
+    hoy_str = datetime.now().strftime('%Y-%m-%d')
+    menus_hoy = []
+    all_menus = DB.get_all('menus')
+    for menu_id, menu_data in all_menus.items():
+        if menu_data.get('date') == hoy_str:
+            menus_hoy.append(menu_data)
+    
+    return render_template('resumen_diario.html', eventos_tarde=eventos_tarde, eventos_recordatorios=eventos_recordatorios, menus_hoy=menus_hoy)
 
 @app.route('/sysinfo')
 def sysinfo():
     return render_template('sysinfo.html')
+
+#region Menu Comedor
+@app.route('/menu_comedor')
+def menu_comedor():
+    menus = DB.get_all('menus')
+    # Group menus by menu type
+    menu_types = {}
+    for menu_id, menu_data in menus.items():
+        menu_type = menu_data.get('menu_type', 'Unknown')
+        if menu_type not in menu_types:
+            menu_types[menu_type] = []
+        menu_types[menu_type].append(menu_data)
+    
+    # Sort menus by date (newest first)
+    for menu_type in menu_types:
+        menu_types[menu_type].sort(key=lambda x: x.get('date', ''), reverse=True)
+    
+    return render_template('menu_comedor/index.html', menu_types=menu_types)
+
+@app.route('/menu_comedor/import', methods=['GET', 'POST'])
+def menu_comedor_import():
+    if request.method == 'POST':
+        menu_type = request.form.get('menu_type', '').strip()
+        csv_data = request.form.get('csv_data', '').strip()
+        
+        if not menu_type:
+            flash("El tipo de menú es obligatorio.")
+            return render_template('menu_comedor/import.html')
+        
+        if not csv_data:
+            flash("Debes proporcionar datos CSV.")
+            return render_template('menu_comedor/import.html')
+        
+        # Parse CSV
+        imported_count = 0
+        errors = []
+        
+        csv_reader = csv.reader(io.StringIO(csv_data), delimiter=';')
+        for line_num, row in enumerate(csv_reader, 1):
+            if len(row) != 5:
+                errors.append(f"Línea {line_num}: formato incorrecto (se esperan 5 campos)")
+                continue
+            
+            date_str, primer_plato, segundo_plato, postre, es_apetecible = row
+            
+            # Validate date format YYYY-MM-DD
+            try:
+                date_obj = datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                date_formatted = date_obj.strftime('%Y_%m_%d')
+            except ValueError:
+                errors.append(f"Línea {line_num}: fecha inválida '{date_str}' (formato esperado: YYYY-MM-DD)")
+                continue
+            
+            # Validate es_apetecible
+            es_apetecible = es_apetecible.strip().upper()
+            if es_apetecible not in ['OK', 'KO']:
+                errors.append(f"Línea {line_num}: es_apetecible debe ser OK o KO, recibido '{es_apetecible}'")
+                continue
+            
+            # Create unique ID: MenuType|YYYY_MM_DD
+            menu_id = f"{menu_type}|{date_formatted}"
+            
+            # Insert or update menu
+            menu_record = {
+                'id': menu_id,
+                'menu_type': menu_type,
+                'date': date_str.strip(),
+                'primer_plato': primer_plato.strip(),
+                'segundo_plato': segundo_plato.strip(),
+                'postre': postre.strip(),
+                'es_apetecible': es_apetecible == 'OK'
+            }
+            
+            DB.insert('menus', menu_record)
+            imported_count += 1
+        
+        if errors:
+            flash(f"Importados {imported_count} menús con {len(errors)} errores:\n" + "\n".join(errors))
+        else:
+            flash(f"Importados {imported_count} menús correctamente.")
+        
+        return redirect('/menu_comedor')
+    
+    return render_template('menu_comedor/import.html')
+
+@app.route('/menu_comedor/delete/<menu_id>', methods=['POST'])
+def menu_comedor_delete(menu_id):
+    DB.delete_by_id('menus', menu_id)
+    flash("Menú eliminado correctamente.")
+    return redirect('/menu_comedor')
+
+#endregion
 
 #region Admin -> Devices
 @app.route('/admin/devices')
@@ -185,8 +291,61 @@ def admin_devices_view(device_id):
 def page_not_found(e):
     return render_template('404.html'), 404
 
+def schedule_daily_menu_notification():
+    """Background task to send menu notifications at 12:15 daily"""
+    while True:
+        now = datetime.now()
+        # Calculate next 12:15
+        target_time = now.replace(hour=12, minute=15, second=0, microsecond=0)
+        if now >= target_time:
+            # If we've passed 12:15 today, schedule for tomorrow
+            target_time += timedelta(days=1)
+        
+        # Calculate seconds until target time
+        sleep_seconds = (target_time - now).total_seconds()
+        time.sleep(sleep_seconds)
+        
+        # Send notifications
+        try:
+            hoy_str = datetime.now().strftime('%Y-%m-%d')
+            menus_hoy = []
+            all_menus = DB.get_all('menus')
+            for menu_id, menu_data in all_menus.items():
+                if menu_data.get('date') == hoy_str:
+                    menus_hoy.append(menu_data)
+            
+            if menus_hoy:
+                # Build message
+                message_lines = ["🍽️ Menú del comedor de hoy:"]
+                for menu in menus_hoy:
+                    menu_type = menu.get('menu_type', 'Menú')
+                    message_lines.append(f"\n📋 {menu_type}:")
+                    message_lines.append(f"  1º: {menu.get('primer_plato', 'N/A')}")
+                    message_lines.append(f"  2º: {menu.get('segundo_plato', 'N/A')}")
+                    message_lines.append(f"  Postre: {menu.get('postre', 'N/A')}")
+                    if menu.get('es_apetecible'):
+                        message_lines.append(f"  ✅ Apetecible")
+                    else:
+                        message_lines.append(f"  ❌ No muy apetecible")
+                
+                message = '\n'.join(message_lines)
+                
+                # Send to all devices
+                devices = DB.get_all('devices')
+                for device_id, device in devices.items():
+                    ntfy_topic = device.get('ntfy_topic')
+                    if ntfy_topic:
+                        notify(ntfy_topic, message, "Ver menú completo", "/menu_comedor", 3)
+        except Exception as e:
+            print(f"Error sending daily menu notification: {e}")
+
 if __name__ == '__main__':
     app.config['SECRET_KEY'] = 'supersecretkey'
+    
+    # Start notification scheduler in background
+    notification_thread = threading.Thread(target=schedule_daily_menu_notification, daemon=True)
+    notification_thread.start()
+    
     if os.environ.get('FLASK_ENV') == 'development' or sys.argv[1:] == ['--dev']:
         app.config['TEMPLATES_AUTO_RELOAD'] = True
         app.run(port=5000, debug=True)

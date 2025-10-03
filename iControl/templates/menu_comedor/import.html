@@ -1,0 +1,46 @@
+{% extends "_base.html" %}
+
+{% block title %}Importar Menús - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Importar Menús</h1>
+    <p class="lead">Importa menús desde un archivo CSV.</p>
+    <hr class="my-4">
+    
+    <div class="alert alert-info" role="alert">
+        <h5><i class="fas fa-info-circle"></i> Formato CSV esperado:</h5>
+        <code>YYYY-MM-DD;PRIMER_PLATO;SEGUNDO_PLATO;POSTRE;ES_APETECIBLE</code>
+        <br><br>
+        <strong>Ejemplo:</strong>
+        <pre class="mb-0">2024-01-15;Ensalada mixta;Pollo asado con patatas;Yogur;OK
+2024-01-16;Sopa de verduras;Merluza al horno;Fruta;KO
+2024-01-17;Pasta carbonara;Ternera guisada;Natillas;OK</pre>
+        <br>
+        <strong>Nota:</strong> ES_APETECIBLE debe ser <code>OK</code> (apetecible) o <code>KO</code> (no apetecible).
+    </div>
+    
+    <form method="POST" action="/menu_comedor/import">
+        <div class="mb-3">
+            <label for="menu_type" class="form-label">Tipo de Menú</label>
+            <input type="text" class="form-control" id="menu_type" name="menu_type" 
+                   placeholder="Ej: Basal, SinLactosa, SinGluten..." required>
+            <small class="form-text text-muted">El nombre del tipo de menú (Basal, SinLactosa, etc.)</small>
+        </div>
+        
+        <div class="mb-3">
+            <label for="csv_data" class="form-label">Datos CSV</label>
+            <textarea class="form-control" id="csv_data" name="csv_data" rows="10" 
+                      placeholder="Pega aquí los datos CSV..." required></textarea>
+            <small class="form-text text-muted">Puedes pegar múltiples líneas de menús</small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-upload"></i> Importar Menús
+        </button>
+        <a href="/menu_comedor" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </form>
+</div>
+{% endblock %}

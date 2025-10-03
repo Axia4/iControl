@@ -18,8 +18,29 @@
                 <span class="card-title fw-bold">Menú del Comedor</span>
             </div>
             <div class="card-body">
-                <p class="card-text">La base de datos no contiene información sobre el menú del comedor.</p>
-                <a href="/menu_comedor" class="btn btn-primary d-print-none">Acceder</a>
+                {% if menus_hoy and menus_hoy|length > 0 %}
+                    {% for menu in menus_hoy %}
+                    <div class="mb-3">
+                        <h5 class="card-title">{{ menu.menu_type }}</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><strong>1º:</strong> {{ menu.primer_plato }}</li>
+                            <li class="list-group-item"><strong>2º:</strong> {{ menu.segundo_plato }}</li>
+                            <li class="list-group-item"><strong>Postre:</strong> {{ menu.postre }}</li>
+                            <li class="list-group-item">
+                                {% if menu.es_apetecible %}
+                                    <span class="badge bg-success">✅ Apetecible</span>
+                                {% else %}
+                                    <span class="badge bg-warning">❌ No muy apetecible</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="card-text">No hay menú registrado para hoy.</p>
+                {% endif %}
+                <a href="/menu_comedor" class="btn btn-primary d-print-none mt-2">Acceder</a>
             </div>
         </div>
         <div class="card text-dark" style="display: inline-block;">

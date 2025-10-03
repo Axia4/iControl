@@ -1,0 +1,63 @@
+{% extends "_base.html" %}
+
+{% block title %}Menú del Comedor - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1 class="display-4">Menú del Comedor</h1>
+    <p class="lead">Gestión de menús diarios del comedor.</p>
+    <hr class="my-4">
+    <a href="/menu_comedor/import" class="btn btn-primary"><i class="fas fa-file-import"></i> Importar menús desde CSV</a>
+</div>
+
+{% if menu_types %}
+    {% for menu_type, menus in menu_types.items() %}
+    <div class="mt-4">
+        <h3 class="mb-3">{{ menu_type }}</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Primer Plato</th>
+                        <th>Segundo Plato</th>
+                        <th>Postre</th>
+                        <th>Apetecible</th>
+                        <th class="d-print-none">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for menu in menus %}
+                    <tr>
+                        <td>{{ menu.date }}</td>
+                        <td>{{ menu.primer_plato }}</td>
+                        <td>{{ menu.segundo_plato }}</td>
+                        <td>{{ menu.postre }}</td>
+                        <td>
+                            {% if menu.es_apetecible %}
+                                <span class="badge bg-success">✅ Sí</span>
+                            {% else %}
+                                <span class="badge bg-warning">❌ No</span>
+                            {% endif %}
+                        </td>
+                        <td class="d-print-none">
+                            <form method="POST" action="/menu_comedor/delete/{{ menu.id }}" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de eliminar este menú?')">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="fas fa-info-circle"></i> No hay menús registrados. <a href="/menu_comedor/import" class="alert-link">Importa menús desde un archivo CSV</a>.
+    </div>
+{% endif %}
+
+{% endblock %}
