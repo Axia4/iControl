@@ -35,7 +35,7 @@ jobs:
         with:
           artifacts: "dist/*.exe"
           tag: ${{ github.ref_name }}
-          name: ${{ github.ref_name }} - intraAxia4
+          name: ${{ github.ref_name }} - interAxia4
           prerelease: false
           allowUpdates: true
           omitBodyDuringUpdate: true
