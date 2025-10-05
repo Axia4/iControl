@@ -1,0 +1,69 @@
+{% extends "_base.html" %}
+
+{% block title %}Editar Recordatorio - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>📝 Editar Recordatorio</h1>
+    <p class="lead">Modificar el recordatorio "{{ recordatorio.title }}":</p>
+    <hr class="my-4">
+    
+    <form method="POST" action="/recordatorios/edit/{{ id }}">
+        <!-- Type Display (Read-only) -->
+        <div class="mb-3">
+            <label class="form-label">Tipo de recordatorio</label>
+            <div class="alert alert-secondary">
+                {% if recordatorio.type == 'day_assigned' %}
+                    <i class="fas fa-calendar"></i> <strong>Asignado a fecha específica</strong>
+                {% else %}
+                    <i class="fas fa-tasks"></i> <strong>Tarea (Todo/Doing/Done)</strong>
+                {% endif %}
+                <small class="text-muted">- El tipo no se puede cambiar después de crear el recordatorio</small>
+            </div>
+        </div>
+        
+        <!-- Common Fields -->
+        <div class="mb-3">
+            <label for="title" class="form-label">Título</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ recordatorio.title }}" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea class="form-control" id="description" name="description" rows="3">{{ recordatorio.description or '' }}</textarea>
+        </div>
+        
+        <!-- Day Assigned Fields -->
+        {% if recordatorio.type == 'day_assigned' %}
+        <div class="mb-3">
+            <label for="assigned_date" class="form-label">Fecha asignada</label>
+            <input type="date" class="form-control" id="assigned_date" name="assigned_date" value="{{ recordatorio.assigned_date }}" required>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="completed" name="completed" {% if recordatorio.completed %}checked{% endif %}>
+                <label class="form-check-label" for="completed">
+                    Marcado como completado
+                </label>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Todo Fields -->
+        {% if recordatorio.type == 'todo' %}
+        <div class="mb-3">
+            <label for="status" class="form-label">Estado</label>
+            <select class="form-control" id="status" name="status" required>
+                <option value="todo" {% if recordatorio.status == 'todo' %}selected{% endif %}>📋 TODO - Por hacer</option>
+                <option value="doing" {% if recordatorio.status == 'doing' %}selected{% endif %}>⚡ DOING - En progreso</option>
+                <option value="done" {% if recordatorio.status == 'done' %}selected{% endif %}>✅ DONE - Completado</option>
+            </select>
+        </div>
+        {% endif %}
+        
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <a href="/recordatorios" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

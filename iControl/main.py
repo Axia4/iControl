@@ -9,6 +9,7 @@ import csv
 import io
 import threading
 import time
+import webbrowser
 
 from iaxshared.notify import notify
 from iaxshared.iax_db import SimpleJSONDB
@@ -29,6 +30,7 @@ DB = SimpleJSONDB('_datos/iControl.iax')
 DB.create_table('devices')
 DB.create_table('menus')
 DB.create_table('config')
+DB.create_table('recordatorios')
 
 # Initialize default configuration if not exists
 def init_config():
@@ -38,7 +40,9 @@ def init_config():
     
     default_configs = {
         'Cal_TurnosDeTarde': {'key': 'Cal_TurnosDeTarde', 'value': '', 'description': 'URL del calendario de turnos de tarde'},
-        'Cal_Recordatorios': {'key': 'Cal_Recordatorios', 'value': '', 'description': 'URL del calendario de recordatorios'}
+        'Cal_Recordatorios': {'key': 'Cal_Recordatorios', 'value': '', 'description': 'URL del calendario de recordatorios'},
+        'url_base': {'key': 'url_base', 'value': 'http://localhost:5343', 'description': 'URL base para enlaces en notificaciones'},
+        'url_base_launcher': {'key': 'url_base_launcher', 'value': 'http://localhost:5343', 'description': 'URL base para abrir automáticamente al iniciar el ejecutable'},
     }
     
     for config_key, config_data in default_configs.items():
@@ -285,6 +289,150 @@ def menu_comedor_delete(menu_id):
 
 #endregion
 
+#region Recordatorios
+@app.route('/recordatorios')
+def recordatorios():
+    # Get all recordatorios and organize them
+    all_recordatorios = DB.get_all('recordatorios')
+    
+    # Separate by type
+    day_assigned = []
+    todo_tasks = []
+    
+    for recordatorio_id, recordatorio in all_recordatorios.items():
+        if recordatorio.get('type') == 'day_assigned':
+            day_assigned.append(recordatorio)
+        elif recordatorio.get('type') == 'todo':
+            todo_tasks.append(recordatorio)
+    
+    # Sort day-assigned by date
+    day_assigned.sort(key=lambda x: x.get('assigned_date', ''), reverse=False)
+    
+    # Sort todo tasks by status (todo -> doing -> done) and creation date
+    status_order = {'todo': 0, 'doing': 1, 'done': 2}
+    todo_tasks.sort(key=lambda x: (status_order.get(x.get('status', 'todo'), 0), x.get('created_at', '')))
+    
+    return render_template('recordatorios/index.html', 
+                         day_assigned=day_assigned, 
+                         todo_tasks=todo_tasks)
+
+@app.route('/recordatorios/add', methods=['GET', 'POST'])
+def recordatorios_add():
+    if request.method == 'POST':
+        recordatorio_type = request.form.get('type')
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not title:
+            flash("El título es obligatorio.")
+            return render_template('recordatorios/add.html')
+        
+        if not recordatorio_type or recordatorio_type not in ['day_assigned', 'todo']:
+            flash("Tipo de recordatorio inválido.")
+            return render_template('recordatorios/add.html')
+        
+        recordatorio_data = {
+            'type': recordatorio_type,
+            'title': title,
+            'description': description,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        if recordatorio_type == 'day_assigned':
+            assigned_date = request.form.get('assigned_date', '').strip()
+            if not assigned_date:
+                flash("La fecha es obligatoria para recordatorios asignados a un día.")
+                return render_template('recordatorios/add.html')
+            recordatorio_data['assigned_date'] = assigned_date
+            recordatorio_data['completed'] = False
+        elif recordatorio_type == 'todo':
+            recordatorio_data['status'] = 'todo'  # todo, doing, done
+        
+        DB.insert('recordatorios', recordatorio_data)
+        flash("Recordatorio creado correctamente.")
+        return redirect('/recordatorios')
+    
+    return render_template('recordatorios/add.html')
+
+@app.route('/recordatorios/edit/<recordatorio_id>', methods=['GET', 'POST'])
+def recordatorios_edit(recordatorio_id):
+    recordatorio = DB.find_by_id('recordatorios', recordatorio_id)
+    if not recordatorio:
+        flash("Recordatorio no encontrado.")
+        return redirect('/recordatorios')
+    
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not title:
+            flash("El título es obligatorio.")
+            return render_template('recordatorios/edit.html', recordatorio=recordatorio, id=recordatorio_id)
+        
+        updates = {
+            'title': title,
+            'description': description
+        }
+        
+        if recordatorio.get('type') == 'day_assigned':
+            assigned_date = request.form.get('assigned_date', '').strip()
+            if not assigned_date:
+                flash("La fecha es obligatoria para recordatorios asignados a un día.")
+                return render_template('recordatorios/edit.html', recordatorio=recordatorio, id=recordatorio_id)
+            updates['assigned_date'] = assigned_date
+            updates['completed'] = request.form.get('completed') == 'on'
+        elif recordatorio.get('type') == 'todo':
+            status = request.form.get('status', 'todo')
+            if status not in ['todo', 'doing', 'done']:
+                status = 'todo'
+            updates['status'] = status
+        
+        DB.update_by_id('recordatorios', recordatorio_id, updates)
+        flash("Recordatorio actualizado correctamente.")
+        return redirect('/recordatorios')
+    
+    return render_template('recordatorios/edit.html', recordatorio=recordatorio, id=recordatorio_id)
+
+@app.route('/recordatorios/delete/<recordatorio_id>', methods=['POST'])
+def recordatorios_delete(recordatorio_id):
+    recordatorio = DB.find_by_id('recordatorios', recordatorio_id)
+    if not recordatorio:
+        flash("Recordatorio no encontrado.")
+        return redirect('/recordatorios')
+    
+    DB.delete_by_id('recordatorios', recordatorio_id)
+    flash("Recordatorio eliminado correctamente.")
+    return redirect('/recordatorios')
+
+@app.route('/recordatorios/quick_status/<recordatorio_id>', methods=['POST'])
+def recordatorios_quick_status(recordatorio_id):
+    """Quick status change for todo-style recordatorios"""
+    recordatorio = DB.find_by_id('recordatorios', recordatorio_id)
+    if not recordatorio or recordatorio.get('type') != 'todo':
+        flash("Recordatorio no encontrado o no es de tipo todo.")
+        return redirect('/recordatorios')
+    
+    current_status = recordatorio.get('status', 'todo')
+    status_cycle = {'todo': 'doing', 'doing': 'done', 'done': 'todo'}
+    new_status = status_cycle.get(current_status, 'todo')
+    
+    DB.update_by_id('recordatorios', recordatorio_id, {'status': new_status})
+    return redirect('/recordatorios')
+
+@app.route('/recordatorios/toggle_complete/<recordatorio_id>', methods=['POST'])
+def recordatorios_toggle_complete(recordatorio_id):
+    """Toggle completion for day-assigned recordatorios"""
+    recordatorio = DB.find_by_id('recordatorios', recordatorio_id)
+    if not recordatorio or recordatorio.get('type') != 'day_assigned':
+        flash("Recordatorio no encontrado o no es de tipo día asignado.")
+        return redirect('/recordatorios')
+    
+    current_completed = recordatorio.get('completed', False)
+    DB.update_by_id('recordatorios', recordatorio_id, {'completed': not current_completed})
+    return redirect('/recordatorios')
+
+#endregion
+
 #region Admin -> Devices
 @app.route('/admin/devices')
 def admin_devices():
@@ -455,19 +603,112 @@ def schedule_daily_menu_notification():
                 for device_id, device in devices.items():
                     ntfy_topic = device.get('ntfy_topic')
                     if ntfy_topic:
-                        notify(ntfy_topic, message, "Ver menú completo", "/menu_comedor", 3)
+                        notify(ntfy_topic, message, "Ver menú completo", get_config("url_base") + "/menu_comedor", 3)
         except Exception as e:
             print(f"Error sending daily menu notification: {e}")
+
+def schedule_daily_recordatorios_notification():
+    """Background task to send recordatorios notifications at 10:30 daily"""
+    while True:
+        now = datetime.now()
+        # Calculate next 10:30
+        target_time = now.replace(hour=10, minute=30, second=0, microsecond=0)
+        if now >= target_time:
+            # If we've passed 10:30 today, schedule for tomorrow
+            target_time += timedelta(days=1)
+        
+        # Calculate seconds until target time
+        sleep_seconds = (target_time - now).total_seconds()
+        time.sleep(sleep_seconds)
+        
+        # Send notifications
+        try:
+            hoy_str = datetime.now().strftime('%Y-%m-%d')
+            recordatorios_hoy = []
+            all_recordatorios = DB.get_all('recordatorios')
+            
+            for recordatorio_id, recordatorio in all_recordatorios.items():
+                # Only day-assigned recordatorios for today that are not completed
+                if (recordatorio.get('type') == 'day_assigned' and 
+                    recordatorio.get('assigned_date') == hoy_str and 
+                    not recordatorio.get('completed', False)):
+                    recordatorios_hoy.append(recordatorio)
+            
+            if recordatorios_hoy:
+                # Build message
+                if len(recordatorios_hoy) == 1:
+                    message_lines = ["📝 Recordatorio para hoy:"]
+                else:
+                    message_lines = [f"📝 {len(recordatorios_hoy)} recordatorios para hoy:"]
+                
+                for i, recordatorio in enumerate(recordatorios_hoy, 1):
+                    if len(recordatorios_hoy) > 1:
+                        message_lines.append(f"\n{i}. 📌 {recordatorio.get('title', 'Sin título')}")
+                    else:
+                        message_lines.append(f"\n📌 {recordatorio.get('title', 'Sin título')}")
+                    
+                    if recordatorio.get('description'):
+                        # Truncate description if too long
+                        desc = recordatorio.get('description')
+                        if len(desc) > 100:
+                            desc = desc[:100] + "..."
+                        message_lines.append(f"   {desc}")
+                
+                message = '\n'.join(message_lines)
+                
+                # Send to all devices
+                devices = DB.get_all('devices')
+                for device_id, device in devices.items():
+                    ntfy_topic = device.get('ntfy_topic')
+                    if ntfy_topic:
+                        notify(ntfy_topic, message, "Ver recordatorios", get_config("url_base") + "/recordatorios", 2)
+            
+            # Also send notification for pending TODO tasks (optional)
+            todo_pendientes = []
+            for recordatorio_id, recordatorio in all_recordatorios.items():
+                if (recordatorio.get('type') == 'todo' and 
+                    recordatorio.get('status') in ['todo', 'doing']):
+                    todo_pendientes.append(recordatorio)
+            
+            if todo_pendientes and len(todo_pendientes) >= 3:  # Only if 3+ pending tasks
+                message_lines = [f"⚡ Tienes {len(todo_pendientes)} tareas pendientes:"]
+                
+                # Show first 3 tasks
+                for i, recordatorio in enumerate(todo_pendientes[:3], 1):
+                    status_icon = "📋" if recordatorio.get('status') == 'todo' else "⚡"
+                    message_lines.append(f"\n{status_icon} {recordatorio.get('title', 'Sin título')}")
+                
+                if len(todo_pendientes) > 3:
+                    message_lines.append(f"\n... y {len(todo_pendientes) - 3} más")
+                
+                message = '\n'.join(message_lines)
+                
+                # Send to all devices with lower priority
+                devices = DB.get_all('devices')
+                for device_id, device in devices.items():
+                    ntfy_topic = device.get('ntfy_topic')
+                    if ntfy_topic:
+                        notify(ntfy_topic, message, "Ver tareas", get_config("url_base") + "/recordatorios", 1)
+
+        except Exception as e:
+            print(f"Error sending daily recordatorios notification: {e}")
 
 if __name__ == '__main__':
     app.config['SECRET_KEY'] = 'supersecretkey'
     
-    # Start notification scheduler in background
-    notification_thread = threading.Thread(target=schedule_daily_menu_notification, daemon=True)
-    notification_thread.start()
+    # Start notification schedulers in background
+    menu_notification_thread = threading.Thread(target=schedule_daily_menu_notification, daemon=True)
+    menu_notification_thread.start()
+    
+    recordatorios_notification_thread = threading.Thread(target=schedule_daily_recordatorios_notification, daemon=True)
+    recordatorios_notification_thread.start()
     
     if os.environ.get('FLASK_ENV') == 'development' or sys.argv[1:] == ['--dev']:
         app.config['TEMPLATES_AUTO_RELOAD'] = True
         app.run(port=5000, debug=True)
     else:
+        if hasattr(sys, 'frozen', False):
+            # Open the web browser automatically when running as a frozen executable
+            url_base = get_config("url_base_launcher", "http://localhost:5343")
+            webbrowser.open(url_base)
         app.run(host='0.0.0.0', port=5343, debug=False)

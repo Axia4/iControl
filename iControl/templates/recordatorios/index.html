@@ -1,0 +1,115 @@
+{% extends "_base.html" %}
+
+{% block title %}Recordatorios - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>📝 Recordatorios</h1>
+    <a href="/recordatorios/add" class="btn btn-success mb-3"><i class="fas fa-plus"></i> Nuevo recordatorio</a>
+    <p class="lead">Gestiona tus recordatorios y tareas:</p>
+    <hr class="my-4">
+    
+    <!-- Day Assigned Reminders -->
+    <div class="row">
+        <div class="col-md-6">
+            <h3>📅 Recordatorios por Fecha</h3>
+            {% if day_assigned %}
+            <div class="list-group mb-4">
+                {% for recordatorio in day_assigned %}
+                <div class="list-group-item {% if recordatorio.completed %}list-group-item-success{% endif %}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1 {% if recordatorio.completed %}text-decoration-line-through{% endif %}">
+                            {{ recordatorio.title }}
+                        </h5>
+                        <small class="text-muted">{{ recordatorio.assigned_date }}</small>
+                    </div>
+                    {% if recordatorio.description %}
+                    <p class="mb-1 {% if recordatorio.completed %}text-decoration-line-through{% endif %}">{{ recordatorio.description }}</p>
+                    {% endif %}
+                    <div class="btn-group btn-group-sm mt-2" role="group">
+                        <form method="POST" action="/recordatorios/toggle_complete/{{ recordatorio.id }}" class="d-inline">
+                            <button type="submit" class="btn {% if recordatorio.completed %}btn-warning{% else %}btn-success{% endif %} btn-sm">
+                                {% if recordatorio.completed %}
+                                    <i class="fas fa-undo"></i> Reabrir
+                                {% else %}
+                                    <i class="fas fa-check"></i> Completar
+                                {% endif %}
+                            </button>
+                        </form>
+                        <a href="/recordatorios/edit/{{ recordatorio.id }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <form method="POST" action="/recordatorios/delete/{{ recordatorio.id }}" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro?')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No hay recordatorios asignados a fechas. <a href="/recordatorios/add">Crear el primero</a>.
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Todo/Doing/Done Tasks -->
+        <div class="col-md-6">
+            <h3>✅ Tareas (Todo/Doing/Done)</h3>
+            {% if todo_tasks %}
+            <div class="list-group mb-4">
+                {% for recordatorio in todo_tasks %}
+                <div class="list-group-item 
+                    {% if recordatorio.status == 'todo' %}list-group-item-light{% endif %}
+                    {% if recordatorio.status == 'doing' %}list-group-item-warning{% endif %}
+                    {% if recordatorio.status == 'done' %}list-group-item-success{% endif %}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1 {% if recordatorio.status == 'done' %}text-decoration-line-through{% endif %}">
+                            {% if recordatorio.status == 'todo' %}📋{% endif %}
+                            {% if recordatorio.status == 'doing' %}⚡{% endif %}
+                            {% if recordatorio.status == 'done' %}✅{% endif %}
+                            {{ recordatorio.title }}
+                        </h5>
+                        <span class="badge 
+                            {% if recordatorio.status == 'todo' %}bg-secondary{% endif %}
+                            {% if recordatorio.status == 'doing' %}bg-warning{% endif %}
+                            {% if recordatorio.status == 'done' %}bg-success{% endif %}">
+                            {{ recordatorio.status.upper() }}
+                        </span>
+                    </div>
+                    {% if recordatorio.description %}
+                    <p class="mb-1 {% if recordatorio.status == 'done' %}text-decoration-line-through{% endif %}">{{ recordatorio.description }}</p>
+                    {% endif %}
+                    <div class="btn-group btn-group-sm mt-2" role="group">
+                        <form method="POST" action="/recordatorios/quick_status/{{ recordatorio.id }}" class="d-inline">
+                            <button type="submit" class="btn btn-outline-primary btn-sm" title="Cambiar estado ({{ recordatorio.status }} → {% if recordatorio.status == 'todo' %}doing{% elif recordatorio.status == 'doing' %}done{% else %}todo{% endif %})">
+                                <i class="fas fa-arrow-right"></i> 
+                                {% if recordatorio.status == 'todo' %}Iniciar
+                                {% elif recordatorio.status == 'doing' %}Completar
+                                {% else %}Reabrir
+                                {% endif %}
+                            </button>
+                        </form>
+                        <a href="/recordatorios/edit/{{ recordatorio.id }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <form method="POST" action="/recordatorios/delete/{{ recordatorio.id }}" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro?')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No hay tareas todo/doing/done. <a href="/recordatorios/add">Crear la primera</a>.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

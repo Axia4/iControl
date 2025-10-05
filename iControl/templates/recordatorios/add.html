@@ -1,0 +1,80 @@
+{% extends "_base.html" %}
+
+{% block title %}Nuevo Recordatorio - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>📝 Nuevo Recordatorio</h1>
+    <p class="lead">Crear un nuevo recordatorio o tarea:</p>
+    <hr class="my-4">
+    
+    <form method="POST" action="/recordatorios/add" id="recordatorioForm">
+        <!-- Type Selection -->
+        <div class="mb-3">
+            <label class="form-label">Tipo de recordatorio</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" id="type_day" value="day_assigned" checked onchange="toggleTypeFields()">
+                <label class="form-check-label" for="type_day">
+                    <strong>📅 Asignado a fecha específica</strong> - Recordatorio para un día concreto
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" id="type_todo" value="todo" onchange="toggleTypeFields()">
+                <label class="form-check-label" for="type_todo">
+                    <strong>✅ Tarea (Todo/Doing/Done)</strong> - Tarea con estados de progreso
+                </label>
+            </div>
+        </div>
+        
+        <!-- Common Fields -->
+        <div class="mb-3">
+            <label for="title" class="form-label">Título</label>
+            <input type="text" class="form-control" id="title" name="title" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            <div class="form-text">Descripción opcional del recordatorio o tarea.</div>
+        </div>
+        
+        <!-- Day Assigned Fields -->
+        <div id="dayAssignedFields">
+            <div class="mb-3">
+                <label for="assigned_date" class="form-label">Fecha asignada</label>
+                <input type="date" class="form-control" id="assigned_date" name="assigned_date">
+                <div class="form-text">Fecha para la cual se programa este recordatorio.</div>
+            </div>
+        </div>
+        
+        <!-- Todo Fields (initially hidden) -->
+        <div id="todoFields" style="display: none;">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Las tareas TODO se crean inicialmente en estado "TODO" y pueden avanzar a "DOING" y luego "DONE".
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Crear Recordatorio</button>
+        <a href="/recordatorios" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+
+<script>
+function toggleTypeFields() {
+    const dayAssignedRadio = document.getElementById('type_day');
+    const dayAssignedFields = document.getElementById('dayAssignedFields');
+    const todoFields = document.getElementById('todoFields');
+    const assignedDateInput = document.getElementById('assigned_date');
+    
+    if (dayAssignedRadio.checked) {
+        dayAssignedFields.style.display = 'block';
+        todoFields.style.display = 'none';
+        assignedDateInput.required = true;
+    } else {
+        dayAssignedFields.style.display = 'none';
+        todoFields.style.display = 'block';
+        assignedDateInput.required = false;
+    }
+}
+</script>
+{% endblock %}
