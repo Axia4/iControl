@@ -1,0 +1,264 @@
+{% extends "_base.html" %}
+
+{% block title %}Editar Configuración - iSync{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-white">
+                <i class="fas fa-edit"></i> Editar Configuración
+            </h1>
+            <a href="{{ url_for('config') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h"></i> Modificar: <code>{{ config.key }}</code>
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="key" class="form-label">Clave</label>
+                        <input type="text" class="form-control" id="key" value="{{ config.key }}" readonly>
+                        <div class="form-text">La clave de configuración no se puede modificar.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="value" class="form-label">Valor</label>
+                        {% if config.key == 'encryption_key' %}
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="value" name="value" 
+                                       value="{{ config.value }}" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-shield-alt text-warning"></i> 
+                                Cambiar esta clave desconectará todos los peers. 
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="generateRandomKey()">
+                                    <i class="fas fa-dice"></i> Generar Nueva
+                                </button>
+                            </div>
+                        {% elif config.key == 'node_id' %}
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="value" name="value" 
+                                       value="{{ config.value }}" required readonly>
+                                <button type="button" class="btn btn-outline-warning" onclick="generateNewNodeId()">
+                                    <i class="fas fa-refresh"></i> Generar Nuevo
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> 
+                                Cambiar el Node ID creará una nueva identidad en la red.
+                            </div>
+                        {% elif config.key == 'auto_sync_interval' %}
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="value" name="value" 
+                                       value="{{ config.value }}" min="5" max="3600" required>
+                                <span class="input-group-text">segundos</span>
+                            </div>
+                            <div class="form-text">Intervalo entre sincronizaciones automáticas (5-3600 segundos).</div>
+                        {% elif config.key == 'max_peers' %}
+                            <input type="number" class="form-control" id="value" name="value" 
+                                   value="{{ config.value }}" min="1" max="10" required>
+                            <div class="form-text">Número máximo de peers conectados simultáneamente (1-10).</div>
+                        {% elif config.key == 'peer_discovery_url' %}
+                            <input type="url" class="form-control" id="value" name="value" 
+                                   value="{{ config.value }}" required>
+                            <div class="form-text">URL del servicio de descubrimiento de peers.</div>
+                        {% else %}
+                            <textarea class="form-control" id="value" name="value" rows="3">{{ config.value }}</textarea>
+                            <div class="form-text">Valor de configuración personalizado.</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="description" name="description" rows="2">{{ config.description or '' }}</textarea>
+                        <div class="form-text">Descripción opcional de esta configuración.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('config') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información</h5>
+            </div>
+            <div class="card-body">
+                {% if config.key == 'encryption_key' %}
+                    <h6><i class="fas fa-key"></i> Clave de Encriptación</h6>
+                    <p>Esta clave se usa para encriptar todos los datos sincronizados entre peers. Debe ser la misma en todos los nodos que quieran sincronizar.</p>
+                    <div class="alert alert-warning">
+                        <small><strong>Importante:</strong> Guarda esta clave en un lugar seguro. Sin ella no podrás descifrar los datos sincronizados.</small>
+                    </div>
+                    
+                {% elif config.key == 'node_id' %}
+                    <h6><i class="fas fa-server"></i> Identificador del Nodo</h6>
+                    <p>Identificador único de este nodo en la red mesh. Se usa para identificar la fuente de los cambios en el sistema CRDT.</p>
+                    <div class="alert alert-info">
+                        <small><strong>Nota:</strong> Cambiar esto efectivamente crea una nueva identidad en la red.</small>
+                    </div>
+                    
+                {% elif config.key == 'peer_discovery_url' %}
+                    <h6><i class="fas fa-globe"></i> Descubrimiento de Peers</h6>
+                    <p>URL del servicio que proporciona la lista de peers disponibles en formato JSON.</p>
+                    <div class="alert alert-info">
+                        <small><strong>Formato esperado:</strong> Array de objetos con propiedades 'name', 'url', 'description' (opcional).</small>
+                    </div>
+                    
+                {% elif config.key == 'auto_sync_interval' %}
+                    <h6><i class="fas fa-clock"></i> Intervalo de Sincronización</h6>
+                    <p>Frecuencia con la que se ejecuta la sincronización automática con los peers conectados.</p>
+                    <div class="alert alert-info">
+                        <small><strong>Recomendación:</strong> 30-60 segundos para un balance entre actualidad y recursos.</small>
+                    </div>
+                    
+                {% elif config.key == 'max_peers' %}
+                    <h6><i class="fas fa-network-wired"></i> Límite de Peers</h6>
+                    <p>Número máximo de peers que pueden estar conectados simultáneamente a este nodo.</p>
+                    <div class="alert alert-info">
+                        <small><strong>Nota:</strong> Más peers = más sincronización pero mayor uso de recursos.</small>
+                    </div>
+                    
+                {% else %}
+                    <h6><i class="fas fa-cog"></i> Configuración Personalizada</h6>
+                    <p>Esta es una configuración personalizada del sistema.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Current Value Display -->
+        <div class="card mt-3">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="fas fa-eye"></i> Valor Actual</h6>
+            </div>
+            <div class="card-body">
+                {% if config.key == 'encryption_key' %}
+                    <code class="text-muted">••••••••••••••••</code>
+                    <br><small class="text-muted">Clave oculta por seguridad</small>
+                {% elif config.key == 'node_id' %}
+                    <code>{{ config.value }}</code>
+                    <button class="btn btn-sm btn-outline-secondary mt-2" onclick="copyToClipboard('{{ config.value }}')">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                {% else %}
+                    <code>{{ config.value if config.value|length < 100 else config.value[:100] + '...' }}</code>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toggle password visibility
+document.getElementById('togglePassword')?.addEventListener('click', function() {
+    const input = document.getElementById('value');
+    const icon = this.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+});
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        showToast('Copiado al portapapeles', 'success');
+    });
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function generateRandomKey() {
+    if (confirm('¿Generar una nueva clave de encriptación? Esto invalidará todas las conexiones actuales.')) {
+        // Generate a random base64 key
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        const key = btoa(String.fromCharCode.apply(null, array));
+        document.getElementById('value').value = key;
+        showToast('Nueva clave generada', 'success');
+    }
+}
+
+function generateNewNodeId() {
+    if (confirm('¿Generar un nuevo Node ID? Esto creará una nueva identidad en la red.')) {
+        // Generate a new UUID
+        const nodeId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+        document.getElementById('value').value = nodeId;
+        showToast('Nuevo Node ID generado', 'success');
+    }
+}
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const key = document.getElementById('key').value;
+    const value = document.getElementById('value').value;
+    
+    if (key === 'auto_sync_interval') {
+        const interval = parseInt(value);
+        if (interval < 5 || interval > 3600) {
+            e.preventDefault();
+            showToast('El intervalo debe estar entre 5 y 3600 segundos', 'error');
+            return;
+        }
+    }
+    
+    if (key === 'max_peers') {
+        const maxPeers = parseInt(value);
+        if (maxPeers < 1 || maxPeers > 10) {
+            e.preventDefault();
+            showToast('El número máximo de peers debe estar entre 1 y 10', 'error');
+            return;
+        }
+    }
+    
+    if (key === 'peer_discovery_url' && value) {
+        try {
+            new URL(value);
+        } catch {
+            e.preventDefault();
+            showToast('La URL de descubrimiento no es válida', 'error');
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

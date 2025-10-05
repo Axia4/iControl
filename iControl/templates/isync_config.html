@@ -1,0 +1,299 @@
+{% extends "_base.html" %}
+
+{% block title %}Configurar iSync{% endblock %}
+
+{% block content %}
+<div style="text-align: center; font-style: italic;" class="text-muted">Configuración de sincronización encriptada iSync</div>
+
+<div data-bs-theme="light" class="bg-light text-dark p-4 rounded"
+    style="border-top: 10px solid #007bff; border-top-left-radius: 0; border-top-right-radius: 0;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0"><i class="fas fa-cog"></i> Configurar iSync</h1>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="img-fluid" style="max-height: 50px;">
+    </div>
+
+    <form method="post">
+        <!-- Auto-discovery Configuration -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-globe"></i> Descubrimiento Automático</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto_discover" name="auto_discover" {{ 'checked' if auto_discover }}>
+                            <label class="form-check-label" for="auto_discover">
+                                <strong>Habilitar descubrimiento automático de peers</strong>
+                            </label>
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="fas fa-info-circle"></i>
+                            Cuando está habilitado, iSync buscará automáticamente peers disponibles desde 
+                            <code>https://tech.eus/isyncpeers.json</code> y se conectará a los 3 primeros disponibles.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Peer Configuration -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-network-wired"></i> Peers Manuales</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="peer_urls" class="form-label">URLs de Peers (separadas por comas)</label>
+                            <textarea class="form-control" id="peer_urls" name="peer_urls" rows="4" 
+                                    placeholder="https://peer1.ejemplo.com:5342, https://peer2.ejemplo.com:5342, https://peer3.ejemplo.com:5342">{{ peer_urls }}</textarea>
+                            <div class="form-text">
+                                Introduce hasta 3 URLs de peers iSync. Estas se usarán cuando el descubrimiento automático esté deshabilitado 
+                                o como respaldo. Formato: <code>https://dominio.com:puerto</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Encryption Configuration -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-lock"></i> Configuración de Encriptación</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="isync_token" class="form-label">Token de Encriptación iSync</label>
+                            <input type="password" class="form-control" id="isync_token" name="isync_token" 
+                                   value="{{ isync_token }}" placeholder="Introduce tu token de encriptación">
+                            <div class="form-text">
+                                <i class="fas fa-shield-alt text-warning"></i>
+                                <strong>Requerido:</strong> Este token se usa para encriptar/desencriptar los datos sincronizados.
+                                Solo los clientes iControl con el mismo token podrán acceder a los datos.
+                                Los peers solo almacenan y sincronizan datos encriptados sin acceso al contenido.
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Seguridad:</strong> Este token debe ser compartido únicamente con las instancias de iControl 
+                            que necesiten acceso a los datos sincronizados. Los servidores peer no requieren este token.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Peers from Discovery -->
+        {% if available_peers %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-satellite-dish"></i> Peers Disponibles (Descubrimiento)
+                            <span class="badge bg-light text-dark">{{ available_peers|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for peer in available_peers %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card border">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            {{ peer.get('name', 'Peer sin nombre') }}
+                                            {% if peer.get('verified') %}
+                                                <i class="fas fa-shield-alt text-success" title="Peer verificado"></i>
+                                            {% endif %}
+                                        </h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">{{ peer.get('url', '') }}</small>
+                                        </p>
+                                        {% if peer.get('description') %}
+                                        <p class="card-text">
+                                            <small>{{ peer.get('description') }}</small>
+                                        </p>
+                                        {% endif %}
+                                        {% if peer.get('location') %}
+                                        <p class="card-text">
+                                            <small><i class="fas fa-map-marker-alt"></i> {{ peer.get('location') }}</small>
+                                        </p>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary w-100" 
+                                                data-peer-url="{{ peer.get('url', '') }}" onclick="addPeerToList(this.dataset.peerUrl)">
+                                            <i class="fas fa-plus"></i> Agregar a la Lista
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Information and Warnings -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>¿Cómo funciona iSync?</h6>
+                        <ul>
+                            <li><strong>Descubrimiento automático:</strong> Busca peers desde un servicio central</li>
+                            <li><strong>Conexión manual:</strong> Te conectas a peers específicos que conozcas</li>
+                            <li><strong>Sincronización:</strong> Solo se sincronizan configuraciones con <code>_id</code></li>
+                            <li><strong>Encriptación:</strong> Todos los datos se encriptan antes de enviarlos</li>
+                            <li><strong>Resolución de conflictos:</strong> Usa CRDT para manejar cambios simultáneos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Consideraciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-shield-alt"></i> Seguridad</h6>
+                            <p class="mb-2">Solo conecta con peers en los que confíes:</p>
+                            <ul class="mb-0">
+                                <li>Los peers pueden ver que tu nodo existe</li>
+                                <li>Los datos están encriptados, pero los metadatos no</li>
+                                <li>Usa conexiones HTTPS siempre que sea posible</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-network-wired"></i> Conectividad</h6>
+                            <p class="mb-0">Los peers deben ser accesibles desde tu red. Verifica firewalls y puertos antes de configurar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('isync_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <div>
+                        <button type="button" class="btn btn-outline-danger me-2" onclick="clearPeerList()">
+                            <i class="fas fa-trash"></i> Limpiar Lista
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Configuración
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<button onclick="window.print()" class="btn btn-light text-dark mt-4 d-print-none">
+    <i class="fas fa-print"></i> Imprimir
+</button>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function addPeerToList(peerUrl) {
+    const textarea = document.getElementById('peer_urls');
+    const currentUrls = textarea.value.trim();
+    
+    // Check if URL is already in the list
+    if (currentUrls.includes(peerUrl)) {
+        alert('Este peer ya está en la lista');
+        return;
+    }
+    
+    // Add URL to the list
+    if (currentUrls === '') {
+        textarea.value = peerUrl;
+    } else {
+        // Count existing URLs to limit to 3
+        const urlCount = currentUrls.split(',').length;
+        if (urlCount >= 3) {
+            if (confirm('Ya tienes 3 peers configurados. ¿Reemplazar la lista con este peer?')) {
+                textarea.value = peerUrl;
+            }
+        } else {
+            textarea.value = currentUrls + ', ' + peerUrl;
+        }
+    }
+    
+    // Visual feedback
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Agregado';
+    button.className = 'btn btn-sm btn-success w-100';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.className = 'btn btn-sm btn-outline-primary w-100';
+    }, 2000);
+}
+
+function clearPeerList() {
+    if (confirm('¿Estás seguro de que quieres limpiar la lista de peers?')) {
+        document.getElementById('peer_urls').value = '';
+    }
+}
+
+// Auto-discovery toggle behavior
+document.getElementById('auto_discover').addEventListener('change', function() {
+    const peerUrlsSection = document.getElementById('peer_urls').closest('.card');
+    if (this.checked) {
+        peerUrlsSection.style.opacity = '0.7';
+        document.getElementById('peer_urls').setAttribute('placeholder', 
+            'URLs de respaldo (opcionales) - se usarán si el descubrimiento automático falla');
+    } else {
+        peerUrlsSection.style.opacity = '1';
+        document.getElementById('peer_urls').setAttribute('placeholder', 
+            'https://peer1.ejemplo.com:5342, https://peer2.ejemplo.com:5342, https://peer3.ejemplo.com:5342');
+    }
+});
+
+// Trigger initial state
+document.getElementById('auto_discover').dispatchEvent(new Event('change'));
+
+// URL validation
+document.getElementById('peer_urls').addEventListener('blur', function() {
+    const urls = this.value.trim();
+    if (urls === '') return;
+    
+    const urlList = urls.split(',').map(url => url.trim());
+    const invalidUrls = [];
+    
+    urlList.forEach(url => {
+        try {
+            new URL(url);
+            if (!url.startsWith('http')) {
+                invalidUrls.push(url);
+            }
+        } catch {
+            invalidUrls.push(url);
+        }
+    });
+    
+    if (invalidUrls.length > 0) {
+        alert('URLs inválidas detectadas:\n' + invalidUrls.join('\n') + '\n\nAsegúrate de usar el formato: https://dominio.com:puerto');
+    }
+});
+</script>
+{% endblock %}

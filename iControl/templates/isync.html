@@ -1,0 +1,238 @@
+{% extends "_base.html" %}
+
+{% block title %}iSync - Sincronización Encriptada{% endblock %}
+
+{% block content %}
+<div style="text-align: center; font-style: italic;" class="text-muted">Panel de gestión de sincronización encriptada iSync</div>
+
+<div data-bs-theme="light" class="bg-light text-dark p-4 rounded"
+    style="border-top: 10px solid #007bff; border-top-left-radius: 0; border-top-right-radius: 0;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">
+            <i class="fas fa-sync-alt"></i> iSync
+            {% if isync_enabled %}
+                <span class="badge bg-success">Habilitado</span>
+            {% else %}
+                <span class="badge bg-secondary">Deshabilitado</span>
+            {% endif %}
+        </h1>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="img-fluid" style="max-height: 50px;">
+    </div>
+
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ isync_status.connected_peers }}</h5>
+                    <p class="card-text">Peers Conectados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ isync_status.node_id[:8] }}...</h5>
+                    <p class="card-text">Node ID</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-{{ 'success' if isync_status.sync_enabled else 'secondary' }}">
+                        {{ 'Activo' if isync_status.sync_enabled else 'Inactivo' }}
+                    </h5>
+                    <p class="card-text">Auto-Sync</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        {% if isync_status.last_sync_time %}
+                            Hace unos minutos
+                        {% else %}
+                            Nunca
+                        {% endif %}
+                    </h5>
+                    <p class="card-text">Última Sync</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <form method="post" action="{{ url_for('toggle_isync') }}" class="d-inline">
+                    <button type="submit" class="btn btn-{{ 'danger' if isync_enabled else 'success' }}">
+                        <i class="fas fa-{{ 'stop' if isync_enabled else 'play' }}"></i>
+                        {{ 'Deshabilitar' if isync_enabled else 'Habilitar' }} iSync
+                    </button>
+                </form>
+                
+                {% if isync_enabled %}
+                <form method="post" action="{{ url_for('isync_sync_now') }}" class="d-inline">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sincronizar Ahora
+                    </button>
+                </form>
+                {% endif %}
+                
+                <a href="{{ url_for('isync_config') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-cog"></i> Configurar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if isync_enabled %}
+    <!-- Connected Peers -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3>Peers Conectados</h3>
+            {% if isync_status.connected_to %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>URL del Peer</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for peer_url in isync_status.connected_to %}
+                            <tr>
+                                <td>
+                                    <a href="{{ peer_url }}" target="_blank" class="text-decoration-none">
+                                        {{ peer_url }}
+                                        <i class="fas fa-external-link-alt ms-1"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-circle"></i> Conectado
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="testPeer('{{ peer_url }}')">
+                                        <i class="fas fa-network-wired"></i> Test
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No hay peers conectados actualmente. 
+                    <a href="{{ url_for('isync_config') }}" class="alert-link">Configura peers</a> 
+                    para comenzar la sincronización.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Configuration Preview -->
+    <div class="row">
+        <div class="col-md-6">
+            <h4>Configuración Actual</h4>
+            <div class="list-group">
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>URLs de Peers Configuradas</span>
+                    <span class="badge bg-primary rounded-pill">{{ peer_urls|length if peer_urls else 0 }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Auto-descubrimiento</span>
+                    <span class="badge bg-{{ 'success' if isync_status.get('auto_discover', True) else 'secondary' }} rounded-pill">
+                        {{ 'Habilitado' if isync_status.get('auto_discover', True) else 'Deshabilitado' }}
+                    </span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Encriptación</span>
+                    <span class="badge bg-{{ 'success' if isync_status.get('encryption_ready', False) else 'danger' }} rounded-pill">
+                        {{ 'Configurada' if isync_status.get('encryption_ready', False) else 'No configurada' }}
+                    </span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Node ID</span>
+                    <code>{{ isync_status.node_id[:16] }}...</code>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <h4>Información de Sincronización</h4>
+            <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle"></i> ¿Qué se sincroniza?</h6>
+                <p class="mb-2">iSync sincroniza únicamente configuraciones que contienen <code>_id</code> en su estructura:</p>
+                <ul class="mb-0">
+                    <li>Configuraciones con rutas como <code>config._id.*</code></li>
+                    <li>Datos encriptados usando el token de iSync configurado</li>
+                    <li>Solo instancias iControl con el token correcto pueden acceder</li>
+                    <li>Los peers solo almacenan y sincronizan datos encriptados</li>
+                    <li>Sincronización bidireccional con resolución de conflictos CRDT</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- iSync Disabled Info -->
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h4>iSync está deshabilitado</h4>
+                <p>iSync permite sincronizar configuraciones específicas de forma encriptada con otros nodos de la red.</p>
+                <p>Habilita iSync para comenzar a sincronizar datos de configuración con otros peers.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<button onclick="window.print()" class="btn btn-light text-dark mt-4 d-print-none">
+    <i class="fas fa-print"></i> Imprimir
+</button>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function testPeer(peerUrl) {
+    // Simple connectivity test
+    fetch(peerUrl + '/api/stats', { method: 'GET', mode: 'no-cors' })
+        .then(() => {
+            alert('Peer ' + peerUrl + ' responde correctamente');
+        })
+        .catch(() => {
+            alert('No se pudo conectar con el peer ' + peerUrl);
+        });
+}
+
+// Auto-refresh status every 30 seconds
+setInterval(function() {
+    fetch('/api/isync/status')
+        .then(response => response.json())
+        .then(data => {
+            // Update connected peers count
+            const peerCountElements = document.querySelectorAll('.card-title');
+            if (peerCountElements.length > 0) {
+                peerCountElements[0].textContent = data.connected_peers;
+            }
+            
+            // Update sync status
+            if (peerCountElements.length > 2) {
+                peerCountElements[2].textContent = data.sync_enabled ? 'Activo' : 'Inactivo';
+                peerCountElements[2].className = 'card-title text-' + (data.sync_enabled ? 'success' : 'secondary');
+            }
+        })
+        .catch(err => console.log('Status update failed:', err));
+}, 30000);
+</script>
+{% endblock %}

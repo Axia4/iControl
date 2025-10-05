@@ -50,6 +50,58 @@
         </div>
     </div>
     
+    <!-- iSync Information -->
+    {% if isync_status %}
+    <div class="mt-4">
+        <h3 class="h4 mb-3">🔄 Estado de iSync</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 text-center">
+                                <h5 class="card-title text-{{ 'success' if isync_status.connected_peers > 0 else 'secondary' }}">
+                                    {{ isync_status.connected_peers }}
+                                </h5>
+                                <p class="card-text">Peers Conectados</p>
+                            </div>
+                            <div class="col-6 text-center">
+                                <h5 class="card-title text-{{ 'success' if isync_status.sync_enabled else 'secondary' }}">
+                                    {{ 'Activo' if isync_status.sync_enabled else 'Inactivo' }}
+                                </h5>
+                                <p class="card-text">Auto-Sync</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <h6 class="card-title">Node ID</h6>
+                            <code>{{ isync_status.node_id[:16] }}...</code>
+                            <br>
+                            <small class="text-muted">
+                                {% if isync_status.last_sync_time %}
+                                    Última sync: hace unos minutos
+                                {% else %}
+                                    Sin sincronizaciones
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('isync_dashboard') }}" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i> Gestionar iSync
+            </a>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- Table Details -->
     <div class="mt-4">
         <h3 class="h4 mb-3">📋 Detalles por Tabla</h3>

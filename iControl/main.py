@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, render_template, flash, request, redirect, url_for
+from flask import Flask, render_template, flash, request, redirect, url_for, jsonify
 import requests
 import json
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ import webbrowser
 
 from iaxshared.notify import notify
 from iaxshared.iax_db import SimpleJSONDB
+from iaxshared.encrypted_client import EncryptedClient
 
 # Handle PyInstaller frozen executable paths
 if getattr(sys, 'frozen', False):
@@ -32,6 +33,9 @@ DB.create_table('menus')
 DB.create_table('config')
 DB.create_table('recordatorios')
 
+# Initialize encrypted client for iSync
+encrypted_client = EncryptedClient(DB, f"icontrol-{int(time.time())}")
+
 # Initialize default configuration if not exists
 def init_config():
     """Initialize default configuration values if they don't exist"""
@@ -43,6 +47,10 @@ def init_config():
         'Cal_Recordatorios': {'key': 'Cal_Recordatorios', 'value': '', 'description': 'URL del calendario de recordatorios'},
         'url_base': {'key': 'url_base', 'value': 'http://localhost:5343', 'description': 'URL base para enlaces en notificaciones'},
         'url_base_launcher': {'key': 'url_base_launcher', 'value': 'http://localhost:5343', 'description': 'URL base para abrir automáticamente al iniciar el ejecutable'},
+        'isync_enabled': {'key': 'isync_enabled', 'value': 'false', 'description': 'Habilitar sincronización con iSync'},
+        'isync_auto_discover': {'key': 'isync_auto_discover', 'value': 'true', 'description': 'Descubrir automáticamente peers de iSync'},
+        'isync_peer_urls': {'key': 'isync_peer_urls', 'value': '', 'description': 'URLs de peers iSync separadas por comas'},
+        'isync_token': {'key': 'isync_token', 'value': '', 'description': 'Token de encriptación para iSync (requerido)'},
     }
     
     for config_key, config_data in default_configs.items():
@@ -97,6 +105,45 @@ def set_config(key: str, value: str, description: str = '') -> None:
 
 # Initialize configuration on startup
 init_config()
+
+# Initialize iSync if enabled
+def init_isync():
+    """Initialize iSync connection if enabled"""
+    try:
+        isync_enabled = get_config('isync_enabled', 'false').lower() == 'true'
+        if isync_enabled:
+            # Set the isync_token for encryption
+            isync_token = get_config('isync_token', '')
+            if isync_token:
+                encrypted_client.set_isync_token(isync_token)
+                
+                auto_discover = get_config('isync_auto_discover', 'true').lower() == 'true'
+                
+                if auto_discover:
+                    success = encrypted_client.auto_discover_and_connect()
+                    if success:
+                        encrypted_client.start_auto_sync(30)
+                        print("iSync initialized with auto-discovery")
+                    else:
+                        print("iSync enabled but no peers found via auto-discovery")
+                else:
+                    peer_urls = get_config('isync_peer_urls', '').split(',')
+                    peer_urls = [url.strip() for url in peer_urls if url.strip()]
+                    if peer_urls:
+                        encrypted_client.connect_to_peers(peer_urls)
+                        encrypted_client.start_auto_sync(30)
+                        print(f"iSync initialized with manual peers: {peer_urls}")
+                    else:
+                        print("iSync enabled but no peers configured")
+            else:
+                print("iSync enabled but no isync_token configured")
+        else:
+            print("iSync is disabled")
+    except Exception as e:
+        print(f"Error initializing iSync: {e}")
+
+# Initialize iSync in background
+threading.Thread(target=init_isync, daemon=True).start()
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
@@ -206,9 +253,107 @@ def sysinfo():
     else:
         file_size_display = f"{db_stats['file_size_mb']} MB"
     
+    # Get iSync status
+    isync_status = encrypted_client.get_connection_status()
+    
     return render_template('sysinfo.html', 
                          db_stats=db_stats, 
-                         file_size_display=file_size_display)
+                         file_size_display=file_size_display,
+                         isync_status=isync_status)
+
+@app.route('/isync')
+def isync_dashboard():
+    """iSync integration dashboard"""
+    isync_status = encrypted_client.get_connection_status()
+    isync_enabled = get_config('isync_enabled', 'false').lower() == 'true'
+    peer_urls = get_config('isync_peer_urls', '').split(',') if get_config('isync_peer_urls', '') else []
+    
+    return render_template('isync.html', 
+                         isync_status=isync_status,
+                         isync_enabled=isync_enabled,
+                         peer_urls=peer_urls)
+
+@app.route('/isync/toggle', methods=['POST'])
+def toggle_isync():
+    """Toggle iSync on/off"""
+    current_state = get_config('isync_enabled', 'false').lower() == 'true'
+    new_state = not current_state
+    
+    set_config('isync_enabled', str(new_state).lower(), 'Habilitar sincronización con iSync')
+    
+    if new_state:
+        # Enable iSync - check if we have a token
+        isync_token = get_config('isync_token', '')
+        if isync_token:
+            encrypted_client.set_isync_token(isync_token)
+            
+            auto_discover = get_config('isync_auto_discover', 'true').lower() == 'true'
+            if auto_discover:
+                success = encrypted_client.auto_discover_and_connect()
+                if success:
+                    encrypted_client.start_auto_sync(30)
+                    flash('iSync habilitado y conectado automáticamente', 'success')
+                else:
+                    flash('iSync habilitado pero no se pudieron encontrar peers', 'warning')
+            else:
+                peer_urls = get_config('isync_peer_urls', '').split(',')
+                peer_urls = [url.strip() for url in peer_urls if url.strip()]
+                if peer_urls:
+                    encrypted_client.connect_to_peers(peer_urls)
+                    encrypted_client.start_auto_sync(30)
+                    flash('iSync habilitado y conectado a peers configurados', 'success')
+                else:
+                    flash('iSync habilitado pero no hay peers configurados', 'warning')
+        else:
+            flash('iSync habilitado pero no hay isync_token configurado', 'error')
+    else:
+        # Disable iSync
+        encrypted_client.disconnect_all()
+        flash('iSync deshabilitado', 'info')
+    
+    return redirect(url_for('isync_dashboard'))
+
+@app.route('/isync/sync_now', methods=['POST'])
+def isync_sync_now():
+    """Force immediate synchronization"""
+    result = encrypted_client.force_sync_now()
+    flash(result['message'], 'success' if result['status'] == 'success' else 'error')
+    return redirect(url_for('isync_dashboard'))
+
+@app.route('/isync/config', methods=['GET', 'POST'])
+def isync_config():
+    """Configure iSync settings"""
+    if request.method == 'POST':
+        auto_discover = request.form.get('auto_discover') == 'on'
+        peer_urls = request.form.get('peer_urls', '').strip()
+        isync_token = request.form.get('isync_token', '').strip()
+        
+        set_config('isync_auto_discover', str(auto_discover).lower(), 'Descubrir automáticamente peers de iSync')
+        set_config('isync_peer_urls', peer_urls, 'URLs de peers iSync separadas por comas')
+        set_config('isync_token', isync_token, 'Token de encriptación para iSync (requerido)')
+        
+        # Update the encrypted client with the new token
+        if isync_token:
+            encrypted_client.set_isync_token(isync_token)
+        
+        flash('Configuración de iSync actualizada', 'success')
+        return redirect(url_for('isync_config'))
+    
+    auto_discover = get_config('isync_auto_discover', 'true').lower() == 'true'
+    peer_urls = get_config('isync_peer_urls', '')
+    isync_token = get_config('isync_token', '')
+    available_peers = encrypted_client.fetch_peer_list()
+    
+    return render_template('isync_config.html',
+                         auto_discover=auto_discover,
+                         peer_urls=peer_urls,
+                         isync_token=isync_token,
+                         available_peers=available_peers)
+
+@app.route('/api/isync/status')
+def api_isync_status():
+    """API endpoint for iSync status"""
+    return jsonify(encrypted_client.get_connection_status())
 
 #region Menu Comedor
 @app.route('/menu_comedor')

@@ -1,0 +1,256 @@
+{% extends "_base.html" %}
+
+{% block title %}Dashboard - iSync{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-white">
+                <i class="fas fa-sync-alt sync-animation"></i> iSync Dashboard
+            </h1>
+            <button onclick="triggerSync()" class="btn btn-light">
+                <i class="fas fa-sync"></i> Sincronizar Ahora
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Node Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-server"></i> Información del Nodo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-4 fw-bold">Node ID:</div>
+                    <div class="col-sm-8">
+                        <code>{{ node_id[:8] }}...</code>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ node_id }}')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-sm-4 fw-bold">Peers Conectados:</div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-{{ 'success' if peer_count > 0 else 'secondary' }}">
+                            {{ peer_count }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-sm-4 fw-bold">Estado de Sync:</div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-{{ 'success' if peer_count > 0 else 'warning' }}">
+                            {{ 'Activo' if peer_count > 0 else 'En espera' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Statistics -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-database"></i> Estadísticas de la Base de Datos</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6 text-center">
+                        <h4 class="text-primary">{{ db_stats.total_records }}</h4>
+                        <small class="text-muted">Total Registros</small>
+                    </div>
+                    <div class="col-6 text-center">
+                        <h4 class="text-success">{{ db_stats.total_tables }}</h4>
+                        <small class="text-muted">Tablas</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h6 class="text-info">{{ db_stats.file_size_mb }} MB</h6>
+                    <small class="text-muted">Tamaño del Archivo</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Available Peers -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-globe"></i> Peers Disponibles</h5>
+            </div>
+            <div class="card-body">
+                {% if available_peers %}
+                    <div class="row">
+                        {% for peer in available_peers[:6] %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title">{{ peer.get('name', 'Peer sin nombre') }}</h6>
+                                    <p class="card-text text-muted small">
+                                        {{ peer.get('url', '') }}
+                                    </p>
+                                    <form method="post" action="{{ url_for('connect_peer') }}" class="d-inline">
+                                        <input type="hidden" name="peer_url" value="{{ peer.get('url', '') }}">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-link"></i> Conectar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if available_peers|length > 6 %}
+                    <div class="text-center">
+                        <a href="{{ url_for('peers') }}" class="btn btn-outline-primary">
+                            Ver todos los peers ({{ available_peers|length }})
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>No se pudieron cargar peers desde el servidor de descubrimiento.</p>
+                        <a href="{{ url_for('peers') }}" class="btn btn-outline-primary">
+                            Gestionar Peers Manualmente
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button onclick="triggerSync()" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sincronizar Ahora
+                    </button>
+                    <a href="{{ url_for('peers') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-network-wired"></i> Gestionar Peers
+                    </a>
+                    <a href="{{ url_for('config') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cog"></i> Configuración
+                    </a>
+                    <button onclick="window.open('/api/stats', '_blank')" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar"></i> API Stats
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time status -->
+<div class="row">
+    <div class="col-12">
+        <div class="card bg-dark text-white">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-terminal"></i> Estado en Tiempo Real</h5>
+            </div>
+            <div class="card-body">
+                <div id="real-time-log" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                    <div class="text-success" id="startup-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show a temporary toast or alert
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = '<i class="fas fa-check"></i> Copiado al portapapeles';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    });
+}
+
+function triggerSync() {
+    fetch('/sync_now', { method: 'POST' })
+        .then(() => {
+            addLogEntry('Sincronización manual activada', 'info');
+        })
+        .catch(err => {
+            addLogEntry('Error al activar sincronización: ' + err, 'error');
+        });
+}
+
+function addLogEntry(message, type = 'info') {
+    const log = document.getElementById('real-time-log');
+    const timestamp = new Date().toLocaleTimeString();
+    const color = type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : 'text-info';
+    
+    const entry = document.createElement('div');
+    entry.className = color;
+    entry.innerHTML = `[${timestamp}] ${message}`;
+    
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+    
+    // Keep only last 50 entries
+    while (log.children.length > 50) {
+        log.removeChild(log.firstChild);
+    }
+}
+
+// Socket event handlers
+socket.on('sync_data', function(data) {
+    addLogEntry(`Datos de sincronización recibidos de ${data.node_id || 'peer desconocido'}`, 'success');
+});
+
+socket.on('peer_connected', function(data) {
+    addLogEntry(`Peer conectado: ${data.node_id}`, 'success');
+});
+
+socket.on('peer_disconnected', function(data) {
+    addLogEntry(`Peer desconectado: ${data.node_id}`, 'warning');
+});
+
+// Refresh stats every 30 seconds
+setInterval(function() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update peer count
+            const peerBadge = document.querySelector('.badge');
+            if (peerBadge) {
+                peerBadge.textContent = data.connected_peers;
+                peerBadge.className = `badge bg-${data.connected_peers > 0 ? 'success' : 'secondary'}`;
+            }
+        })
+        .catch(err => console.log('Stats update failed:', err));
+}, 30000);
+
+// Initialize startup message
+document.addEventListener('DOMContentLoaded', function() {
+    const startupMsg = document.getElementById('startup-message');
+    if (startupMsg) {
+        const now = new Date();
+        const timeStr = now.toTimeString().substring(0, 8);
+        startupMsg.textContent = `[${timeStr}] iSync Dashboard iniciado`;
+    }
+});
+</script>
+{% endblock %}

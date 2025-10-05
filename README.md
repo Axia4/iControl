@@ -7,13 +7,17 @@
 
 <img height="64" src="_logos/Control.png" alt="Logo iControl"> < Control
 
+**Nuevo:**
+
+<img height="64" src="_logos/Control.png" alt="Logo iSync"> < iSync (Sincronización Encriptada)
+
 **Alpha:**
 
 <img height="64" src="_logos/Hablar.png" alt="Logo iHablar"> < Hablar (email)
 
 ---
 
-**interAxia4** es una plataforma web integral de coordinación del aula que permite la gestión de dispositivos, notificaciones y actividades diarias en entornos educativos.
+**interAxia4** es una plataforma web integral de coordinación del aula que permite la gestión de dispositivos, notificaciones y actividades diarias en entornos educativos, ahora con capacidades de sincronización encriptada entre múltiples nodos.
 
 ## 🚀 Características Principales
 
@@ -25,6 +29,7 @@
 - **Información del sistema** accesible con easter egg (4 clics en el logo)
 - **Gestión de inventario y menú del comedor** (en desarrollo)
 - **Base de datos JSON** incorporada para persistencia de datos
+- **Integración con iSync** para sincronización encriptada de configuraciones
 
 ### 📢 iAvisos (Cliente de Notificaciones)
 - **Cliente de escritorio** para recibir notificaciones en tiempo real
@@ -34,12 +39,24 @@
 - **Icono en bandeja del sistema** con indicadores de estado
 - **Configuración automática** mediante interfaz gráfica
 
-## 🛠️ Tecnologías Utilizadas
+### � iSync (Sincronización Encriptada) - **NUEVO**
+- **Servidor de sincronización** independiente con arquitectura mesh
+- **Encriptación end-to-end** usando Fernet (AES 128)
+- **CRDT (Conflict-free Replicated Data Types)** para resolución de conflictos
+- **Descubrimiento automático de peers** desde servicios centralizados
+- **Sincronización selectiva** de rutas `config._id.*` únicamente
+- **Interfaz web completa** para gestión de peers y configuración
+- **Integración transparente** con iControl para datos de configuración
+- **Red mesh resiliente** con hasta 3 peers simultáneos
+
+## �🛠️ Tecnologías Utilizadas
 
 ### Backend
 - **Python 3.11+**
 - **Flask** - Framework web
-- **Flask-SocketIO** - Comunicación en tiempo real
+- **Flask-SocketIO** - Comunicación en tiempo real y mesh networking
+- **Cryptography** - Encriptación de datos sincronizados
+- **PyNaCl** - Algoritmos criptográficos adicionales
 - **Requests** - Cliente HTTP
 - **iCalendar** - Procesamiento de calendarios
 - **Axia4** - Backend original
@@ -47,6 +64,7 @@
 ### Frontend
 - **Bootstrap 5** con tema Spacelab
 - **Font Awesome** - Iconografía
+- **Socket.IO Client** - Comunicación en tiempo real
 - **HTML5/CSS3/JavaScript**
 - **Responsive Design**
 
@@ -93,11 +111,29 @@ cd iAvisos
 python main.py
 ```
 
+5. **Ejecuta iSync (sincronización encriptada):**
+```bash
+cd iSync
+python main.py
+```
+
+### Inicio Rápido con Script
+
+Ejecuta todas las aplicaciones a la vez:
+```bash
+# Windows
+start_all.bat
+
+# Linux/macOS (crear script similar)
+./start_all.sh
+```
+
 ### Instalación desde ejecutables
 
 1. Descarga los ejecutables desde [Releases](https://github.com/Axia4/iControl/releases)
 2. Ejecuta `iControl.exe` para el servidor web
 3. Ejecuta `iAvisos.exe` para el cliente de notificaciones
+4. Ejecuta `iSync.exe` para el servidor de sincronización
 
 ## ⚙️ Configuración
 
@@ -111,9 +147,27 @@ El servidor se ejecuta por defecto en:
 ```json
 {
   "Cal_TurnosDeTarde": "https://calendar.google.com/calendar/ical/...",
-  "Cal_Recordatorios": "https://calendar.google.com/calendar/ical/..."
+  "Cal_Recordatorios": "https://calendar.google.com/calendar/ical/...",
+  "isync_enabled": "true",
+  "isync_auto_discover": "true"
 }
 ```
+
+### iSync (Sincronización Encriptada)
+
+El servidor se ejecuta por defecto en:
+- **Desarrollo:** `http://localhost:5002`
+- **Producción:** `http://0.0.0.0:5342`
+
+**Configuración inicial automática:**
+- Node ID único generado automáticamente
+- Clave de encriptación generada automáticamente
+- Descubrimiento de peers desde `https://tech.eus/isyncpeers.json`
+
+**Configuración manual en iControl:**
+1. Navega a `/isync` en iControl
+2. Habilita iSync
+3. Configura peers (automático o manual)
 
 ### iAvisos (Cliente)
 
@@ -129,6 +183,27 @@ La configuración se guarda en `~/iaxconfig.avisos.json`
 1. Accede a **Administración → Dispositivos**
 2. Registra nuevos dispositivos con sus topics de ntfy.sh
 3. Gestiona permisos y descripciones
+
+### Sincronización con iSync
+1. **Configurar iSync en iControl:**
+   - Ve a `/isync` desde el menú principal
+   - Habilita iSync si no está activo
+   - Configura peers (automático recomendado)
+
+2. **Gestionar peers:**
+   - El descubrimiento automático busca peers disponibles
+   - Puedes agregar peers manualmente si conoces sus URLs
+   - Se conecta automáticamente a hasta 3 peers
+
+3. **Datos sincronizados:**
+   - Solo configuraciones con rutas `config._id.*`
+   - Datos encriptados automáticamente
+   - Resolución automática de conflictos
+
+4. **Monitoreo:**
+   - Dashboard en tiempo real en `/isync`
+   - Estado de conexiones en página de sistema (`/sysinfo`)
+   - API de estado disponible en `/api/isync/status`
 
 ### Envío de Notificaciones
 1. Ve a **Administración → Enviar aviso**

@@ -1,0 +1,224 @@
+{% extends "_base.html" %}
+
+{% block title %}Configuración - iSync{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="text-white mb-4">
+            <i class="fas fa-cog"></i> Configuración
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fas fa-sliders-h"></i> Configuración del Sistema</h5>
+            </div>
+            <div class="card-body">
+                {% if configs %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Clave</th>
+                                    <th>Valor</th>
+                                    <th>Descripción</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for config_id, config_data in configs.items() %}
+                                <tr>
+                                    <td>
+                                        <code>{{ config_data.key }}</code>
+                                    </td>
+                                    <td>
+                                        {% if config_data.key == 'encryption_key' %}
+                                            <span class="text-muted">
+                                                <i class="fas fa-key"></i> ••••••••••••••••
+                                            </span>
+                                        {% elif config_data.key == 'node_id' %}
+                                            <code>{{ config_data.value[:16] }}...</code>
+                                        {% else %}
+                                            {% if config_data.value|length > 50 %}
+                                                <span title="{{ config_data.value }}">
+                                                    {{ config_data.value[:50] }}...
+                                                </span>
+                                            {% else %}
+                                                {{ config_data.value }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ config_data.description or 'Sin descripción' }}</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('edit_config', config_id=config_id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        {% if config_data.key in ['node_id', 'encryption_key'] %}
+                                            <button class="btn btn-sm btn-outline-secondary ms-1" 
+                                                    onclick="copyToClipboard('{{ config_data.value }}')"
+                                                    title="Copiar valor completo">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <h5>No hay configuraciones disponibles</h5>
+                        <p>Las configuraciones se crearán automáticamente al inicializar el sistema.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Information -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información de Configuración</h5>
+            </div>
+            <div class="card-body">
+                <h6>Configuraciones Clave:</h6>
+                <ul>
+                    <li><strong>node_id:</strong> Identificador único de este nodo en la red mesh</li>
+                    <li><strong>encryption_key:</strong> Clave de encriptación para datos sincronizados</li>
+                    <li><strong>peer_discovery_url:</strong> URL para descubrir peers automáticamente</li>
+                    <li><strong>auto_sync_interval:</strong> Intervalo de sincronización automática (segundos)</li>
+                    <li><strong>max_peers:</strong> Número máximo de peers conectados simultáneamente</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Advertencias</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-shield-alt"></i> Seguridad</h6>
+                    <p class="mb-2">La <strong>clave de encriptación</strong> es crítica para la seguridad. Si la cambias:</p>
+                    <ul class="mb-0">
+                        <li>Perderás la capacidad de sincronizar con peers existentes</li>
+                        <li>Necesitarás compartir la nueva clave con todos los peers</li>
+                        <li>Se recomienda respaldar la clave actual antes de cambiarla</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-network-wired"></i> Conectividad</h6>
+                    <p class="mb-0">Cambiar el <strong>node_id</strong> efectivamente crea una nueva identidad en la red. Los peers existentes no reconocerán este nodo.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <button onclick="generateNewEncryptionKey()" class="btn btn-warning w-100 mb-2">
+                            <i class="fas fa-key"></i> Generar Nueva Clave
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="exportConfig()" class="btn btn-info w-100 mb-2">
+                            <i class="fas fa-download"></i> Exportar Config
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="resetToDefaults()" class="btn btn-secondary w-100 mb-2">
+                            <i class="fas fa-undo"></i> Valores por Defecto
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100 mb-2">
+                            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        showToast('Copiado al portapapeles', 'success');
+    });
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function generateNewEncryptionKey() {
+    if (confirm('¿Estás seguro de que quieres generar una nueva clave de encriptación? Esto desconectará todos los peers y requerirá reconfiguración.')) {
+        // This would need to be implemented as a backend endpoint
+        showToast('Funcionalidad pendiente de implementación', 'warning');
+    }
+}
+
+function exportConfig() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            const configData = {
+                node_id: data.node_id,
+                exported_at: new Date().toISOString(),
+                sync_state: data.sync_state
+            };
+            
+            const blob = new Blob([JSON.stringify(configData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `isync-config-${data.node_id.substring(0, 8)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('Configuración exportada', 'success');
+        })
+        .catch(err => {
+            showToast('Error al exportar configuración', 'error');
+        });
+}
+
+function resetToDefaults() {
+    if (confirm('¿Estás seguro de que quieres restablecer todas las configuraciones a sus valores por defecto? Esta acción no se puede deshacer.')) {
+        showToast('Funcionalidad pendiente de implementación', 'warning');
+    }
+}
+</script>
+{% endblock %}
