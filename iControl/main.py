@@ -195,7 +195,20 @@ def resumen_diario():
 
 @app.route('/sysinfo')
 def sysinfo():
-    return render_template('sysinfo.html')
+    # Get database statistics
+    db_stats = DB.get_database_stats()
+    
+    # Format file size for display
+    if db_stats['file_size_bytes'] < 1024:
+        file_size_display = f"{db_stats['file_size_bytes']} bytes"
+    elif db_stats['file_size_bytes'] < 1024 * 1024:
+        file_size_display = f"{round(db_stats['file_size_bytes'] / 1024, 2)} KB"
+    else:
+        file_size_display = f"{db_stats['file_size_mb']} MB"
+    
+    return render_template('sysinfo.html', 
+                         db_stats=db_stats, 
+                         file_size_display=file_size_display)
 
 #region Menu Comedor
 @app.route('/menu_comedor')
@@ -707,7 +720,7 @@ if __name__ == '__main__':
         app.config['TEMPLATES_AUTO_RELOAD'] = True
         app.run(port=5000, debug=True)
     else:
-        if hasattr(sys, 'frozen', False):
+        if hasattr(sys, 'frozen'):
             # Open the web browser automatically when running as a frozen executable
             url_base = get_config("url_base_launcher", "http://localhost:5343")
             webbrowser.open(url_base)

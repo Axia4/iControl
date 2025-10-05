@@ -11,7 +11,71 @@
         <h1 class="mb-0">información del sistema</h1>
         <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="img-fluid" style="max-height: 50px;">
     </div>
-    <p>Por el momento no hay información disponible.</p>
+    
+    <!-- Database Statistics -->
+    <div class="row">
+        <div class="col-md-6">
+            <h3 class="h4 mb-3">📊 Estadísticas de la Base de Datos</h3>
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="card-title text-primary">{{ db_stats.total_records }}</h5>
+                                <p class="card-text">Total de Registros</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="card-title text-success">{{ db_stats.total_tables }}</h5>
+                                <p class="card-text">Tablas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <h3 class="h4 mb-3">💾 Información del Archivo</h3>
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-center">
+                        <h5 class="card-title text-info">{{ file_size_display }}</h5>
+                        <p class="card-text">Tamaño del Archivo de Base de Datos</p>
+                        <small class="text-muted">{{ db_stats.file_size_bytes }} bytes exactos</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Table Details -->
+    <div class="mt-4">
+        <h3 class="h4 mb-3">📋 Detalles por Tabla</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Nombre de la Tabla</th>
+                        <th class="text-end">Número de Registros</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for table_name, record_count in db_stats.tables.items() %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-secondary me-2">{{ table_name }}</span>
+                        </td>
+                        <td class="text-end">
+                            <span class="badge bg-primary">{{ record_count }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
 <button onclick="window.print()" class="btn btn-light text-dark mt-4 d-print-none"><i class="fas fa-print"></i> Imprimir</button>

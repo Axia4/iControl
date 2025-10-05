@@ -172,6 +172,35 @@ class SimpleJSONDB:
         table_data = self._data.get(table, {})
         return str(record_id) in table_data
 
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Get comprehensive database statistics"""
+        stats = {
+            'file_size_bytes': 0,
+            'file_size_mb': 0,
+            'total_tables': 0,
+            'total_records': 0,
+            'tables': {}
+        }
+        
+        # Get file size
+        if os.path.exists(self.filename):
+            stats['file_size_bytes'] = os.path.getsize(self.filename)
+            stats['file_size_mb'] = round(stats['file_size_bytes'] / (1024 * 1024), 2)
+        
+        # Get table statistics
+        stats['total_tables'] = len(self._data)
+        
+        for table_name, table_data in self._data.items():
+            table_count = len(table_data) if table_data else 0
+            stats['tables'][table_name] = table_count
+            stats['total_records'] += table_count
+        
+        return stats
+
+    def get_table_names(self) -> List[str]:
+        """Get list of all table names"""
+        return list(self._data.keys())
+
 # Example usage:
 # db = SimpleJSONDB('mydb.json')
 # db.create_table('users')
