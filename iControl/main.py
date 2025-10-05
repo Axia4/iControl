@@ -28,6 +28,71 @@ else:
 DB = SimpleJSONDB('_datos/iControl.iax')
 DB.create_table('devices')
 DB.create_table('menus')
+DB.create_table('config')
+
+# Initialize default configuration if not exists
+def init_config():
+    """Initialize default configuration values if they don't exist"""
+    # First, try to migrate from existing config file
+    migrate_config_file()
+    
+    default_configs = {
+        'Cal_TurnosDeTarde': {'key': 'Cal_TurnosDeTarde', 'value': '', 'description': 'URL del calendario de turnos de tarde'},
+        'Cal_Recordatorios': {'key': 'Cal_Recordatorios', 'value': '', 'description': 'URL del calendario de recordatorios'}
+    }
+    
+    for config_key, config_data in default_configs.items():
+        existing = DB.find('config', {'key': config_key})
+        if not existing:
+            DB.insert('config', config_data)
+
+def migrate_config_file():
+    """Migrate configuration from old JSON file to database if it exists"""
+    config_path = '_datos/iControl.config'
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            for key, value in config.items():
+                existing = DB.find('config', {'key': key})
+                if not existing:
+                    description = ''
+                    if key == 'Cal_TurnosDeTarde':
+                        description = 'URL del calendario de turnos de tarde'
+                    elif key == 'Cal_Recordatorios':
+                        description = 'URL del calendario de recordatorios'
+                    
+                    DB.insert('config', {'key': key, 'value': value, 'description': description})
+            
+            # Optionally rename the old config file to prevent re-migration
+            backup_path = config_path + '.migrated'
+            os.rename(config_path, backup_path)
+            print(f"Configuration migrated from {config_path} to database. Old file backed up as {backup_path}")
+            
+        except Exception as e:
+            print(f"Error migrating config file: {e}")
+
+def get_config(key: str, default_value: str = '') -> str:
+    """Get a configuration value by key"""
+    result = DB.find('config', {'key': key})
+    if result:
+        return result[0].get('value', default_value)
+    return default_value
+
+def set_config(key: str, value: str, description: str = '') -> None:
+    """Set a configuration value by key"""
+    existing = DB.find('config', {'key': key})
+    if existing:
+        # Update existing
+        config_id = existing[0]['id']
+        DB.update_by_id('config', config_id, {'value': value, 'description': description})
+    else:
+        # Create new
+        DB.insert('config', {'key': key, 'value': value, 'description': description})
+
+# Initialize configuration on startup
+init_config()
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
@@ -59,13 +124,8 @@ def notify_route():
 
 @app.route('/resumen_diario')
 def resumen_diario():
-    # Obtener ruta de config.json relativa al ejecutable
-    config_path = '_datos/iControl.config'
-
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-
-    cal_url_tarde = config.get('Cal_TurnosDeTarde')
+    # Get configuration from database instead of config file
+    cal_url_tarde = get_config('Cal_TurnosDeTarde')
     eventos_tarde = []
     if cal_url_tarde:
         try:
@@ -92,7 +152,8 @@ def resumen_diario():
                             eventos_tarde.append({'hora': hora, 'resumen': resumen})
         except Exception as e:
             eventos_tarde = [{'hora': '', 'resumen': f'Error al obtener eventos: {e}'}]
-    cal_url_recordatorios = config.get('Cal_Recordatorios')
+    
+    cal_url_recordatorios = get_config('Cal_Recordatorios')
     eventos_recordatorios = []
     if cal_url_recordatorios:
         try:
@@ -284,6 +345,65 @@ def admin_devices_view(device_id):
         flash("Dispositivo no encontrado.")
         return redirect('/admin/devices')
     return render_template('admin/devices/view.html', device=device, id=device_id)
+
+#endregion
+
+#region Admin -> Config
+@app.route('/admin/config')
+def admin_config():
+    configs = DB.get_all('config')
+    return render_template('admin/config/index.html', configs=configs.items())
+
+@app.route('/admin/config/edit/<config_id>', methods=['GET', 'POST'])
+def admin_config_edit(config_id):
+    config = DB.find_by_id('config', config_id)
+    if not config:
+        flash("Configuración no encontrada.")
+        return redirect('/admin/config')
+    
+    if request.method == 'POST':
+        value = request.form.get('value', '')
+        description = request.form.get('description', '')
+        
+        DB.update_by_id('config', config_id, {'value': value, 'description': description})
+        flash(f"Configuración '{config['key']}' actualizada correctamente.")
+        return redirect('/admin/config')
+    
+    return render_template('admin/config/edit.html', config=config, id=config_id)
+
+@app.route('/admin/config/add', methods=['GET', 'POST'])
+def admin_config_add():
+    if request.method == 'POST':
+        key = request.form.get('key', '').strip()
+        value = request.form.get('value', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not key:
+            flash("La clave es obligatoria.")
+            return render_template('admin/config/add.html')
+        
+        # Check if key already exists
+        existing = DB.find('config', {'key': key})
+        if existing:
+            flash("Ya existe una configuración con esa clave.")
+            return render_template('admin/config/add.html')
+        
+        DB.insert('config', {'key': key, 'value': value, 'description': description})
+        flash(f"Configuración '{key}' creada correctamente.")
+        return redirect('/admin/config')
+    
+    return render_template('admin/config/add.html')
+
+@app.route('/admin/config/delete/<config_id>', methods=['POST'])
+def admin_config_delete(config_id):
+    config = DB.find_by_id('config', config_id)
+    if not config:
+        flash("Configuración no encontrada.")
+        return redirect('/admin/config')
+    
+    DB.delete_by_id('config', config_id)
+    flash(f"Configuración '{config['key']}' eliminada correctamente.")
+    return redirect('/admin/config')
 
 #endregion
 

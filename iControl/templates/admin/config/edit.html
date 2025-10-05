@@ -1,0 +1,30 @@
+{% extends "_base.html" %}
+
+{% block title %}Editar configuración - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Editar configuración</h1>
+    <p class="lead">Modificar la configuración "<strong>{{ config.key }}</strong>":</p>
+    <hr class="my-4">
+    <form method="POST" action="/admin/config/edit/{{ id }}">
+        <div class="mb-3">
+            <label for="key" class="form-label">Clave</label>
+            <input type="text" class="form-control" id="key" name="key" value="{{ config.key }}" readonly>
+            <div class="form-text">La clave no se puede modificar.</div>
+        </div>
+        <div class="mb-3">
+            <label for="value" class="form-label">Valor</label>
+            <textarea class="form-control" id="value" name="value" rows="3">{{ config.value or '' }}</textarea>
+            <div class="form-text">El valor de la configuración.</div>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea class="form-control" id="description" name="description" rows="2">{{ config.description or '' }}</textarea>
+            <div class="form-text">Descripción opcional de para qué sirve esta configuración.</div>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <a href="/admin/config" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

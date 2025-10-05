@@ -1,0 +1,54 @@
+{% extends "_base.html" %}
+
+{% block title %}Configuración - iControl{% endblock %}
+
+{% block content %}
+<div data-bs-theme="light" class="jumbotron bg-light text-dark p-5 rounded">
+    <h1>Configuración</h1>
+    <a href="/admin/config/add" class="btn btn-success mb-3"><i class="fas fa-plus"></i> Nueva configuración</a>
+    <p class="lead">Lista de configuraciones del sistema:</p>
+    <hr class="my-4">
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Clave</th>
+                    <th>Valor</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for id, config in configs %}
+                <tr>
+                    <td><strong>{{ config.key }}</strong></td>
+                    <td>
+                        {% if config.value %}
+                            {% if config.value|length > 50 %}
+                                <span title="{{ config.value }}">{{ config.value[:50] }}...</span>
+                            {% else %}
+                                {{ config.value }}
+                            {% endif %}
+                        {% else %}
+                            <em class="text-muted">No configurado</em>
+                        {% endif %}
+                    </td>
+                    <td>{{ config.description or '' }}</td>
+                    <td>
+                        <a href="/admin/config/edit/{{ id }}" class="btn btn-primary btn-sm">Editar</a>
+                        <form method="POST" action="/admin/config/delete/{{ id }}" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de que quieres eliminar esta configuración?')">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if not configs %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No hay configuraciones registradas. <a href="/admin/config/add">Crear la primera configuración</a>.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
