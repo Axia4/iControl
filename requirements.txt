@@ -10,3 +10,4 @@ playsound==1.2.2
 python-socketio
 cryptography
 pynacl
+pyttsx3
