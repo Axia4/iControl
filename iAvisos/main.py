@@ -10,6 +10,7 @@ import pystray
 from PIL import Image, ImageDraw, ImageTk
 import time
 import queue
+import pyttsx3
 
 # ----- Resource Path for PyInstaller compatibility -----
 def resource_path(relative_path):
@@ -69,6 +70,25 @@ popup_offset = 0
 popup_lock = threading.Lock()
 sound_threads = {}
 notification_queue = queue.Queue()
+
+# ----- TTS SETUP -----
+tts_engine = pyttsx3.init()
+tts_engine.setProperty("rate", 160)   # speaking speed
+tts_engine.setProperty("volume", 1.0)
+
+tts_lock = threading.Lock()
+
+def speak_async(text):
+    """Non-blocking TTS"""
+    def _speak():
+        with tts_lock:
+            try:
+                tts_engine.say(text)
+                tts_engine.runAndWait()
+            except Exception as e:
+                print("TTS error:", e, file=sys.stderr)
+
+    threading.Thread(target=_speak, daemon=True).start()
 
 # ----- High-Priority Sound Loop -----
 def play_sound_loop(popup_id, stop_event):
@@ -227,16 +247,22 @@ def process_queue():
         click_url = data.get("click")
         custom_title = data.get("title")
         priority = data.get("priority",3)
-        print("D.", data.get("event"))
         if data.get("event") == "message":
-            print("F.", msg)
+            # Low priority: short sound
             if priority <= 3:
                 try:
                     playsound(resource_path("ring.wav"), block=False)
                 except:
                     pass
+            # High priority: TTS
+            if priority >= 3:
+                tts_text = msg
+                if custom_title:
+                    tts_text = f"{custom_title}. {msg}"
+                speak_async(tts_text)
             set_tray_status((0,200,0), "Nueva notificación")
             show_notification(msg, click_url, custom_title, priority)
+
 
     # Schedule next check in 100 ms
     main_root.after(100, process_queue)
@@ -252,10 +278,7 @@ def listen_ntfy_worker():
             for line in resp.iter_lines():
                 if line:
                     try:
-                        print("A.", line)
-                        print("B.", line.decode("utf-8"))
                         data = json.loads(line.decode("utf-8"))
-                        print("C.", data.get("event"))
                         notification_queue.put(data)
                     except Exception as e:
                         print("Error parsing message:", e, file=sys.stderr)
